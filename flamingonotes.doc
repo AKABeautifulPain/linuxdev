@@ -1,0 +1,451 @@
+--------------
+------linux服务器开发一般规范-------------
+# linux服务器一般规范：
+  参考linux高性能服务器编程
+  > 日志系统：
+    × 基于tcp/udp远程日志服务器
+    × 基于linux自带日志服务rsyslogd本地日志进程
+      rsyslogd对用户日志信息基于socketpair()创建的unix域本地套接字生成日志
+      至/var/log/
+      rsyslogd对内核日志信息基于环状缓存映射/proc/smsg文件再输出至/var/log/
+    × 自定义日志进程/线程：
+  > 命令行与配置文件
+    × 命令行解析：
+    × 配置文件解析
+  > 系统资源限制：
+     fd数;内存使用
+  > /var/run/myserver.pid
+  > 服务器帐户：
+    服务器程序以非root用户运行，如rsyslogd日志服务以syslog用户名运行
+  > 服务化：
+    守护进程+作为服务自启动
+# flamingo服务器实施规范：
+
+-----flamingo 服务器-----
+# 编译与安装：
+  flamingoserver201920190819 编译基于cmake+make
+  cmake和make都是自动化构建工具---底层都是make执行Makefile脚本调用gcc/g++
+  进行有组织的编译、链接、安装。
+  cmake 支持更为容易编写的CMakeLists.txt，我们只需编写这个脚本，
+  在cmake ./ 就能生成Makefile 文件。
+  > 编译安装步骤：
+    cmake ./ "将现成的CMakeLists.txt文件cmake成Makefile文件
+    make     "make执行Makefile文件，构建系统(编译、链接、安装)
+  
+# 运行
+  > 非守护进程方法运行
+    × 直接运行方式：
+      ./chatserver "自己成为前台进程组并是组长;标准输入输出错误三者均重定向至终端
+    × nohup 方式：
+      "
+      nohup ./chatserver "与上基本一致.但是对SIGHUP信号忽略.即终端退出该进程也不会终
+    
+    × nohup + &方式：
+     "忽略SIGHUP信号且作为bash的后台进程(标准输入关闭),输出至nohup.out
+     nohup ./chatserver &
+  > 守护进程方式运行：
+     ./chatserver -d "守护进程更加独立，更加不受影响。见linuxnotes-守护进程 
+#使用：
+
+# 调试：
+  a.
+   gdb -q --args chatserver -d "-d 以守护进程方式运行。
+   (gdb) set inferior-tty /dev/pts/5 "设置输出定向至指定bash终端-而不是在gdb
+   (gdb) set inferor-tty /dev/pts/4 "run前设置本程序的输出终端
+   (gdb) set detach-on-fork off     "run前设置,我父子进程都想调试所以off
+   (gdb) set follow-fork-mode child  "n步进fork后，停在子进程
+   (gdb) b DaemonRun.cpp:19      "停在fork
+   (gdb) r                       "运行
+   (gdb) d "此时暂停在pid=fork();n步进fork前delete所有断点，否则报错
+   (gdb) n "步进fork，子进程停在if(pid<0)。而父进程停在fork中
+   (gdb) bt "但是此时bt只显示指令地址.直接n步进莫名会直接跳出daemon_run()
+   (gdb) disassemble/x daemon_run "查bt显示的汇编地址对应的源码
+   (gdb) bt "我操，居然bt又能正常打印指令对应的文件名:行号
+   (gdb) n  "我操，居然能正常步进了，停在else if(pid>0).
+   (gdb) detach inferior 1 "父进程退出-变成僵尸进程;子进程被upstart收养。
+   " (gdb) r或者q "父进程这个僵尸进程居然又能被清理了？草
+ b.-x选项加载当前目录下的自定义gdb命令脚本。
+   gdb -q -x auto-debug.gdb --args chatserver -d  "停在else if(pid>0)
+#服务器设计与实现:
+    基于muduo c++网络库的flamingo 即时通讯服务器源码分析
+    > muduo 网络库:
+        基于Reactor模式+非阻塞io的c++多线程网络库 
+        × 网络库:
+            a.对底层socket api的封装:
+            b.对socket接收和发送的数据进行处理:
+        × Reactor模式:
+            主线程负责IO Mutilplexing，工作线程负责EventLoop
+        ×非阻塞:
+            对套接字fd的非阻塞读写
+        ×多线程:
+            主线程:
+            线程池：
+-------
+一般变量名：
+bool bTruncate;         //bool类型，b
+char chChar;            //char字符变量，ch
+char szPath[10];        //char字符串数组，sz
+string strFileName;     //string类型，str
+int  nNum;              //int类型(flamingo中int64_t)，n
+int  arrnNums;          //int类型数组，arr+n
+vector<STableInfo> vecTableInfo //容器类型，vec+[元素类型作为名]
+share_ptr<CDatabaseMysql> spConn;//sp类型，sp+[管理的对象类型]
+++++
+数据成员:
+    bool CAsynclog::m_bTruncateLongLog  //数据成员，m_+变量名
+private成员函数:类内部使用
+    CMysqlManager::bool _CreateDB();    //private成员函数,_+函数名
+++++
+宏定义:
+    #define MAX_LINE_LENGTH 256     //宏定义，大写+下划线_
+枚举类型和枚举常量(枚举元素)
+    enum LOG_LEVEL{                 //枚举类型名，大写+下划线_
+        LOG_LEVEL_INFO,             //枚举元素常量，同上
+        LOG_LEVEL_FATAL
+    };
+
+
+# 信号处理设置：
+  > 信号处理的一些问题:
+    a.程序必须搞清楚本进程接收了哪些信号-->使用信号掩码但不因挂起而计一次-->排队问题
+    b.及时和适当的信号处理方式-->统一事件源
+    c.特定信号特定处理--->设置信号处理函数
+    d.可重入函数
+    e.信号处理函数仍被安装
+    f.阻塞(挂起)信号
+    g.被信号处理中断的系统调用可重启
+    sigaction()和新版的signal()自身可以提供e，f，g能力，但是两者都欠缺信号的排队能力。
+  > 服务器几个重要信号：
+    服务器是个自启动的守护进程，即要做成服务。因此，应特别注意
+    SIGCHILD;SIGPIPE;SIGTERM;SIGINT;SIGURG
+  > 信号处理继承：
+    fork后子进程会继承父进程的所有信号处理。
+    但exec后会使得继承的所有信号捕捉处理置为默认
+    因此,针对上述几个主要信号要尤其注意-是否默认？是否忽略？是否捕捉？
+  > 服务器信号处理简约方式---只处理问题c:以chatserver为例
+    signal(SIGCHLD, SIG_DFL);//子进程停止或终止信号，默认是忽略
+    signal(SIGPIPE, SIG_IGN);//读至无写端(pipe或socket)。默认是终止进程
+    sigal(SIGINT, prog_exit);//ctrl+c终端中断符，默认是终止前台进程组
+    signal(SIGTERM, prog_exit);//kill pid，默认是(prog_exit进行清理后)终止 
+  
+# 命令行解析：
+  运行可执行文件指定选项-参数可设置程序的执行的流程，实现功能-输出定制。
+  以chatserver为例：
+  > 命令行规范应和命令行解析函数统一：
+    chatserver中使用poxis规范函数getopt()进行命令行解析:其要求的命令行规范：
+    短选项(-单一字母) + 参数(必须/可选/无)，如下 
+    在getopt函数形参 char* optstring = "ab:c::" 指定该程序所有选项规则
+      单个字符a        表示选项a没有参数       格式:-a即可，不加参数
+      单字符加冒号b:   表示选项b有且必须加参数 格式:-b 100或-b100,但-b=100错
+      单字符加2冒号c:: 表示选项c可以有或无参数 格式：-c200，其它格式错误 
+      ./test -c 200 "虽然标准错误不会报错，但是该选项对应的optarg=null
+      ./test -e     "标准错误输出"无效选项-e"
+      ./test -b     "标准错误输出"-b选项缺少参数"
+# 配置文件解析：
+  etc/rsyslogd.log-主配置文件:协议、ip、端口、日志路径、日志权限、子配置路径
+  etc/rsyslogd.d/*.conf "子配置文件
+
+# 设置为守护进程：
+  > 服务器应作为守护进程的原因：
+    守护进程的特点是后台运行，彻底摆脱与终端的联系。
+    服务器进程作为前台进程:占据终端前台、受SIGHUP、SIGINT影响
+    进程&:作为后台进程运行虽然不受SIGINT,但受SIGHUP影响、输出仍重定向至终端
+    nohup进程:不受SIGHUP影响，但输入仍重定向至终端受SIGINT、输出至nohup.out文件
+    nohup 进程&:虽然输入不重定向至终端，输出至nohup.out文件，不受SIGINT、SIGHUP影响
+    但是进程仍然在继承了会话、进程组、控制终端，本质没有摆脱这些。
+    此外，也继承了文件掩码、根目录
+    也没关闭不需再使用的fd，如 0,1,2
+
+   
+  > 设置成守护进程步骤：at chatserver:main.cpp:daemon_run函数
+    × fork的子进程作为我们的守护进程：
+      后续的setsid函数不能把进程组设置为新会话sid，父进程显然是bash新创建
+      的进程组的组长。
+      并不要求父进程要先于子进程调用setsid函数前就exit退出，使得子进程被
+      upstart进程收养。需要注意的是bash进程会为其会话的任何进程收尸。
+    × 子进程调用setsid函数：
+      子进程不是进程组组成，因此可以调用setsid，为自己创建一个新的会话，
+      新的进程组，摆脱原控制终端。即这个新会话的leader是这个fork后的子进程，
+      这个会话只有一个进程组，组成就是这个子进程，摆脱原控制终端的影响。
+      ！摆脱控制终端指的是，子进程不再受控制终端的键入(如ctrl+C/Z/\)的影响
+        但子进程从父进程继承的标准输入输出错误任有效且定向至控制终端。
+        如在未设置0,1,2定向至/dev/null设备之前，我们的cout会输出到控制终端。
+        ctrl+c会使得本次cout结束不占用终端而显示命令提示符，但不会发信号给
+        我这个子进程。
+        setsid(); "为当前进程(子进程)创建新会话
+   × 改变当前工作命令和根目录：
+     " 实际chatserver:daemon_run函数并未设置这两个属性,而是采用默认。??
+     chdir("\") "设置当前工作目录为根目录.
+     chroot("\") "设置逻辑根目录.如web服务器根目录往往是/www/var
+   × 设置文件掩码：
+     " 实际，chatserver也未设置这个属性，也是采用默认。??
+     umask(0) "文件(目录的默认权限）是基值0777/0666-掩码值0022)
+   × 关闭继承/打开的的fd：
+     对于继承的标准输入输出错误0-1-2fd，我们往往使其定向至/dev/null。
+     对于其他打开的fd都close关闭。
+     //《linux高性能服务器的做法--我认为虽然关闭了对终端的文件表项，但没释放0 1 2 fd。
+     int fd;
+     fd = open("/dev/null", O_RDWR, 0);
+     if (fd != -1)
+     {
+        dup2(fd, STDIN_FILENO);//仅复制进程表项中该fd的文件标志和文件指针
+        dup2(fd, STDOUT_FILENO);
+        dup2(fd, STDERR_FILENO);
+     }
+    if (fd > 2)
+        close(fd);//close关闭fd，但0-1-2 三个fd仍指向其文件表项。
+#配置文件解析器：
+  按行读取-->按行根据文件编写规范进行解析-->存放在key-value  map中
+    
+
+---------
+#日志模块：class CAsyncLog
+    > CAsyncLog类:
+        异步日志类：见AsynLog.cpp
+    > 日志(条目)输出模式:
+        调用日志条目输出宏定义函数的线程一定负责日志条目的合成，
+        但不一定在该线程直接输出该日志条目，这取决于日志条目输出方式。
+        × 日志条目同步输出:
+            线程合成日志条目之后在该线程执行实际的日志条目输出至日志文件
+            a. 低效但实时：因此FATAL日志条目采用这种方式输出
+        × 日志条目异步输出:
+            线程合成日志条目之后只将该条目提交到日志条目队列。
+            日志线程才集中执行实际的日志条目输出至日志文件。
+            b. 高效但延时: 且需要通过互斥锁+条件变量保证日志条目队列读写的安全
+              
+    > 日志模块架构
+        本日志模块同时支持同步输出和异步输出。
+        而高性能多线程服务器异步日志基于(一)生产者-(多)消费者模型(观察者模式)
+        × CAsyncLog类:
+            
+        × 主线程：负责日志模块(线程)配置参数获取和日志模块初始化
+            1.日志模块(线程)配置参数获取：
+                //获取生成二进制日志文件标志：
+                const char* logbinarypackage = config.GetConfigName(
+                                               "logbinarypackage");
+                //获取日志文件(相对)路径和文件名并连接成fullpath:
+                const char* logfilepath = config.GetConfigName("logfiledir");
+                const char* logfilename = config.GetConfigName("logfilename");
+                logFileFullPath += logfilename;    
+            2.日志模块初始化:日志模块配置参数初始化和日志线程的创建、启动。
+              CAsyncLog::Init(logFileFullPath.c_str());
+                1. 配置参数初始化:
+                日志文件配置参数初始化:包括文件名、截断标志、翻页长度
+
+                m_bTruncateLongLog = bTruncateLongLine;
+                m_nFileRollSize = nRollSize;
+                m_strFileName = pszLogFileName;
+
+                2. 日志线程(日志写入线程)的创建和启动：
+                m_spWriteThread.reset(new std::thread(WriteThreadProc);
+        × 所有线程:所有线程(包括工作线程)都可能合成日志条目、同步或异步输出。
+       
+        × 日志线程:负责事件循环线程安全的异步日志输出和新建翻页处理
+                while (true)
+                {       
+                    //新建翻页处理:超过单个日志size，则再新建一个日志文件
+                    if (!m_strFileName.empty())
+                    {
+                         if (m_hLogFile == nullptr || m_nCurrentWrittenSize
+                             >= m_nFileRollSize)
+                         {
+                
+                            m_nCurrentWrittenSize = 0;
+                            if (!CreateNewFile(strNewFileName.c_str()))
+                             return;
+                         }// end inner if        
+                    }// end outer-if
+                    
+            //异步日志输出处理:线程安全地提取日志条目+当前线程执行输出
+                    std::string strLine;                    {
+                     std::unique_lock<std::mutex> guard(m_mutexWrite);
+                     while (m_listLinesToWrite.empty())
+                    {
+                        if (m_bExit)
+                            return;
+                         m_cvWrite.wait(guard);
+                    }
+                    strLine = m_listLinesToWrite.front();
+                     m_listLinesToWrite.pop_front();
+                    }        
+            
+                    std::cout << strLine << std::endl;
+                     if (!m_strFileName.empty())
+                    {
+                         if (!WriteToFile(strLine))
+                         return;
+                         m_nCurrentWrittenSize += strLine.length();
+                    }     
+             }// end outer-while-loop      
+
+    > 日志模块流程:
+        s0：主线程负责日志文件配置参数获取与日志模块初始化.
+        s1: 日志模块初始化主要日志模块配置参数初始化和日志线程的创建、启动。
+        s2：日志线程负责事件循环线程安全的日志异步输出和新建翻页处理
+        s3: 任何线程都可调用宏定义日志输出函数输出日志条目。
+            (实际是调用日志条数目输出函数)
+            LOGF(...)----->CAsyncLog::OutPut()
+        s4：对于s3，若为FATAL日志条目则采用同步输出(直接输出)，
+            否则采用异步输出(只提交到日志条目队列)。
+        
+
+
+        
+    > 日志文件：
+        日志文件配置参数的获取、参数初始化、日志文件新建与打开、日志条目输出
+        × 日志文件名:
+            格式:prefix.%Y%m%d%H%M%S.PID.log
+            a.当日志条目同步输出时(FATAL日志条目必须同步输出)，
+  :           此时prefix为CAsyncLog::m_strFileName的默认值"default"
+            b.当日志条目异步输出时(非FATAL日志条目)，
+              debug模式下(g++ -g)，prefix为空，""
+              release模式,prefix,prefix为配置文件的日志文件名，"chatsever"
+            
+        × 日志文件配置参数获取与初始化:
+          日志文件名、日志文件相对路径、日志文件翻页大小、日志条目过长截断标志
+          可设默认值，也可通过程序配置文件配置这些参数的值
+          1.日志文件配置参数获取:
+              CConfigFileReader::GetConfigName(keystring)获取日志文件
+              的相对路径(程序所在目录为当前路径)和日志文件名并连接成
+              logfilefullpath
+          2.日志文件配置参数初始化:
+              CAsyncLog::Init(logFileFullPath.c_str());中使用默认参数或
+              配置文件参数取初始化日志文件参数。
+
+        × 日志文件新建与打开:
+             在执行日志文件实际输出(写入到文件)之前会foopen()打开文件
+             若没有该文件则创建
+
+        × 日志文件实际输出(写入)：
+            a.非FATAL日志采用异步输出:
+              工作线程根据日志信息合成符合日志格式的日志条目并提交到日志条目队
+              列。
+              日志线程会事件循环地线程安全地从日志条目队列提取日志并执行实际
+              日志条目输出至日志文件。
+            b.FATAL日志采用同步输出并终止进程:
+              FATAL日志会在当前线程同步输出接着终止进程
+            上述两种方式无前后顺序，但都可能去打开(无则创建)日志文件，若创建文
+            件则创建的日志文件名前缀不同。
+
+    > 日志条目:
+        × 日志条目合成:
+            调用日志条目输出宏定义函数的线程肯定负责合成格式化的日志条目。
+            但是否在该线程实际输出至日志文件取决于该日志条目输出是同步还是异步
+            而输出方式则与该日志条目级别相关。
+        ×日志条目格式:
+            [LogLevel][[FmtLocalTime]][ThreadID][FileName:LineNo][FmtMsg][\n]
+            |----Prefix-------------------------|---Location-----|-FmtMsg-|LF|
+        × LogLevel:日志条目级别
+            1.其值可取日志级别枚举类型LOG_LEVEL的枚举常量的第三部分字段。
+            2.该值由线程调用的级别日志输出宏定义函数决定，如调用LOGI(),则
+              为LogLevel=INFO
+            3. 当前日志级别控制:
+                若日志条目级别小于当前日志级别，则不合成日志条目，不输出。
+            4. 日志条目级别：
+            enum LOG_LEVEL  //自定义枚举类型：
+            {               //自定义枚举元素(枚举常量):
+              LOG_LEVEL_TRACE,
+              LOG_LEVEL_DEBUG,
+              LOG_LEVEL_INFO,   //当前日志级别的默认值，也是默认日志条目prefix
+              LOG_LEVEL_WARNING,
+              LOG_LEVEL_ERROR,    //用于业务错误
+              LOG_LEVEL_SYSERROR, //用于技术框架本身的错误
+              LOG_LEVEL_FATAL,    //同步输出，终止进程。基本、核心错误
+                                  //如各模块配置初始化错误
+              LOG_LEVEL_CRITICAL  //不受当前日志级别控制，总是输出。
+            };
+        × 日志输出粒度:
+            在数据库模块配置中，flamingo的做法是将数据库配置失败(FATAL)
+            同一在主线程输出，这一粒度太大导致不能确定数据库配置失败是
+            是哪一层级的哪一步骤。
+#io操作:本源码所用的。
+    >输出:
+        即写，可由格式化字符串fmt(char*)|buf(char*)
+         输出至(写至)流(文件指针FILE*)|buf(char*)
+    >snprintf():c标准io，格式化输出。
+        × fmt---->buf
+        × 比sprintf()更为安全的(因为指定了size)将格式化字符串fmt，
+          输出至char* buf,buf可为字符指针|数组名|string::c_str()
+        × 本源码:
+            .AsyncLog.cpp:415
+             将线程id写入字符数组
+             snprintf(szThreadID, 
+                      sizeof(szThreadID), 
+                      "[%s]", 
+                      osThreadID.str().c_str()
+                     );
+             
+    > fwrite:c标准io，尝试一次性写入nobj个size字节至流(文件指针)
+        × buf-->流
+        × 实际应fwrite结合循环，将buf全部写入流
+        * 本源码:
+            .AsyncLog.cpp:WriteToFile()
+            将string日志条目写入日志文件
+            while (true)
+            {
+                ret = fwrite(strLocal.c_str(), 1, strLocal.length(), 
+                             m_hLogFile);
+                if (ret <= 0)
+                return false;
+                else if (ret <= (int)strLocal.length())
+                {
+                    strLocal.erase(0, ret); 
+                }
+                if (strLocal.empty())
+                break;
+            }
+
+# 事件循环:class EvenLoop
+  > 事件循环模型：
+  > 实现EventLoop类:
+    io线程只创建唯一的、与之绑定、独享、一次loop调用的事件循环对象。
+    × 前置条件与解决:
+      ×× 一个io线程只能拥有(创建)一个事件循环对象
+        一个线程创建>1各事件循环是多余的。
+        解决：
+        1.基于io线程的事件循环指针是否为NULL
+          io线程在创建EventLoop对象定义的一个
+           __thread EventLoop* t_loopInThisThread指针变量去保存该io线程创建的
+           事件循环对象地址。
+           该io线程创建事件循环对象时(构造函数调用时)必须判断该指针变量是否
+           为NULL，为NULL就继续创建并置为this，否则就表示已创建。
+
+      ×× io线程独享其所创建的事件循环对象:
+         解决：
+         1.事件循环对象不能是共享(如全局变量)的:
+           io线程只能使用在其线程内创建的EventLoop对象
+         2.事件循环类应实现为不可拷贝:不可使用该类的复制构造和赋值成员函数
+           这样io线程创建其唯一事件循环对象不能拷贝其他线程io的事件循环
+           对象。即事件循环对象绑定的是创建它的io线程信息。
+         3.如果不小心使用了其他io线程创建的事件循环对象，我们必须
+           有所异常处理措施。见下。
+           事件循环类必须有标识其所在线程id的数据成员
+      ×× 对事件循环对象loop成员函数的调用前置条件：
+         1.保证使用的是当前线程所创建的事件循环对象(的loop())
+           事件循环对象的使用就是使用其loop成员函数，因此
+           loop成员函数必须判断:当前线程id==该事件循环对象的创建线程id
+         2.保证io线程只对其创建的事件循环对象的loop成员函数调用一次
+           loop成员函数必须判断：该事件循环对象的是否已调用loop标志(looping_)
+
+    × 事件循环对象只属于某一个线程:
+            一个事件循环对象只属于创建它的线程，其包含指明所属线程id的
+            数据成员。线程可以直接访问其他线程创建的事件循环对象的
+            线程安全成员函数以及添加同步措施以保证线程安全地访问非线程安全
+            函数。
+   × 事件循环对象不可拷贝:
+            一个事件循环对象包含了其所属线程的特定相关信息，因此一个线程
+            不能使用另一个线程的事件循环对象进行复制构造。
+            这可直接地将EventLoop类继承boost::noncopyable实现，
+            或者间接地将EventLoop类的复制构造和赋值成员函数设置为delete
+            属性或是private
+
+#
+    初始化两种方式:
+        1.raii：调用构造函数时就完成该对象的数据成员的逻辑初始化
+                
+        2.initialze()成员函数:
+            对象的构造函数只负责语法层面的初始化，如string 数据成员
+            语法层面的初始化是初始化为空串且无需手动初始化。
+            对象的intialize()成员函数负责逻辑初始化，如对上述string 用户名数
+            据成员赋值为用户名字符串。
+    

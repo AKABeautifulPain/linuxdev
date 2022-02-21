@@ -1,0 +1,15 @@
+
+#   @ copyright：Copyright (c) 2020 TengFei Zi (http://www.zitengfei.com)
+#   @ version: 
+#   @ license:GNU GENERAL PUBLIC LICENSE 2.0
+#   
+#@describe：
+# this is a note about tool usage ,theory of project manage 
+# the tool generally refer to git,github etc.
+
+"克隆一个远程服务器的仓库(项目)的master分支到本地，默认是保存到当前目录
+git clone githubcloneurl链接 [指定保存路径]
+
+"查看当前本地仓库的状态，必须cd切换目录至你想的查看的仓库里面
+cd  /仓库所在路径/仓库名 
+git status 

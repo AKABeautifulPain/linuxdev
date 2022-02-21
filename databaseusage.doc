@@ -1,0 +1,367 @@
+# mysql理论:
+    > 索引：index
+        索引是数据库的物理结构--基于B树的目录结构，用于辅助查找
+        (where条件过滤、join时从其他表检索行、查找max()/min()等)
+        mysql没必要再遍历一个列取查找，而是基于索引快速定位到某行
+        或某些行。
+        × index：纯粹的索引，该列值可不唯一、可为NULL
+        × 主键索引:没有primary index，而有primary key
+        × 唯一索引:一般写成unique key
+    > 键:key
+        key不仅有index的意思(key一定会建立索引)，还根据其修饰关
+        键词(primary|unique|foreign)具有不同的约束性。
+        × key:等价于纯粹的index，二者可互用。
+        × 主键: primary key
+            1.首先如上所说，肯定会建立index
+            2.其次具有唯一、not null约束
+            3.每个表必须、只有一个由单列、多列构成的主键
+        × 唯一键:unique key
+            1.上述1,2特点
+            2.但表的唯一键可0或多个
+        × 外键：foreign key
+            1.(mysql)肯定会建立index
+            2.规范了数据的引用完整性，一个表若有外建，
+              那该外键肯定是其他表的主键。
+
+# mysql语句的语法:
+    > dcl语句：
+      即用户和用户权限的创建、删除
+        × 用户创建和删除:
+            'username'@'hostip'才表示一个用户
+            -> 创建新用户
+                 create user 'username'@'host' identified by 'password' 
+            -> 删除用户
+                 drop user 'username'@'host'       
+        × 用户权限授予和取消:
+            新创建的用户是没有任何权限的，还需授权
+            "用户授权
+            grant privilegename on db.table to 'username'@'host' 
+            [with grant option]      
+            "用户撤销权限
+            revoke privilegenme on db.table from 'username'@'host'
+        × 权限刷新：
+            " 通过更新表数据(DML)来更改用户名
+            update user set user='zitenfei'where user='ziengfei';
+            " 因为是通过DML语句来更改用户名(也是权限)，必须手动flush
+            " 才可以将更新后的权限刷新至内存。
+            flush privileges;
+    > DDL语句:define定义数据结构
+        用于创建(create)、修改(alter)、和删除(drop)
+        数据库内数据库、表、视图、索引、存储过程
+        等数据结构
+        × create:
+            创建数据库数据库、表、视图、索引、存储过程等数据结构
+            -> create database：创建数据库 
+                见 sql21天 create database
+                格式:
+                create database db_name;
+            -> create table:创建表
+                格式：
+                    CREATE TABLE [IF NOT EXISTS] tableName(
+                        
+                    
+                                
+                    )ENGINE=InboDB [DEFAULT CHARSET=utf];
+
+                CREATE TABLE IF NOT EXISTS  t_user  (
+                     f_id  bigint(20) NOT NULL AUTO_INCREMENT COMMENT '自增ID',
+		             f_user_id  bigint(20) NOT NULL COMMENT '用户ID',
+		             f_password  varchar(64) DEFAULT NULL COMMENT '用户密码',
+		             f_facetype  int(10) DEFAULT 0 COMMENT '用户头像类型',
+			         f_update_time  timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TI
+                     MESTAMP COMMENT '更新时间',
+                     PRIMARY KEY ( f_user_id ),
+		             INDEX f_user_id (f_user_id),
+                     KEY  f_id  ( f_id )
+                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+        × 查看建表语句、表字段信息、表信息
+            ->查看建表语句：
+                show create table t_user;
+            ->查看表字段信息:
+                “最为完整的表字段信息,基于mysql服务端实例的schema
+                select * from information_schema.columns where 
+                table_schema ='flamingoTest' and table_name = 't_user' ;
+                "较为完整的表字段信息
+                SHOW FULL COLUMNS FROM t_user;
+                ”无字段注释信息：
+                desc t_user;
+            -> 查看表信息:表注释、表引擎、表字符集
+                 select *  from information_schema.tables 
+                 where table_schema = 'flaminoTest' 
+                 and   table_name   = 't_user' ;                
+                
+                
+    > DQL语句:query查询数据库表中的数据
+        用于查(select)数据库中表的数据;查询变量值;查询表达式结果;函
+        ×
+            select version();   "查看mysql数据库版本(服务端)
+            select database();  "查看当前所使用的数据库
+    > DML语句:manipulation操作数据
+        用于增(insert)、删(delete)、改(update)数据库中表的数据。
+    > DTL语句：Commit、Rollback 事务提交与回滚语句
+        一般情况autocommit变量默认为0,因此一般情况对于DML操作会指定提交
+
+#mysql数据库安装与检测：
+    >mysql数据库服务器端安装与检测：
+        mysql-server:
+            mysql服务端软件包，主要包含mysqld程序
+        mysqld：
+            mysql服务端进程，是个守护进程，一旦安装，开机自启动并后台持续运行
+        mysql:
+            若为服务名，则为mysql数据库服务端mysqld进程提供的mysql服务，供客户通过mysql客户端/my
+            sql api 进行tcp连接并操作数据库
+        × 安装：
+            apt install mysql-server "安装mysql服务端软件包，主要包含了mysqld进程
+                                     "(mysql服务器端进程名/程序名)
+        × 检测：
+            ps -ef|grep "mysqld"    "检测方法一：检测mysql服务端进程mysqld是否正在
+                                     "运行，mysqld是个守护进程(自启动&后台持续运行)
+            dpkg -l "mysql-server"   "检测方法二:查看软件包mysql-server是否安装和版本
+                                     "mysql-server包只要安装就会安装其中的mysqld进程
+            service mysql status     "检测mysql服务状态
+            netstat -apt|grep "mysqld" "检测mysqld进程的套接字状态，如是否处于监听/端口号
+    >mysql客户端安装和检测：
+        mysql-client为mysql客户端软件包，主要包含mysql进程
+        × mysql:
+            当为进程名时，表示mysql客户端进程。
+            当为服务名时，表示mysql数据库服务器服务。
+        × 安装：
+            apt install mysql-client "安装msyql客户端软件包(mysql进程)
+        ×检测：
+            dpkg -l "mysql-client"  "查看mysql客户端软件包是否安装和版本
+            mysql --version         "检测是否安装和版本
+    >mysql客户端开发包:
+        libmysqlclient-dev为mysql客户端开发包(c-api方式)，主要包含mysql 
+        客户端开发相关.h,.a,.so
+        × 作用:
+            网络通信服务器访问mysql数据库(服务端)，则需要安装该开发包，
+            实现mysql数据库的连接登录，增删改查等数据操作
+        × 安装：
+            apt install libmysqlclient-dev  
+        ×检测：
+            dpkj -l "libmysqlclient-dev"    "检测是否安装和版本
+#mysql数据库连接：
+    >本地连接mysql服务端:
+        在mysql数据库服务端运行的主机上直接访问mysql数据库服务端
+        eg: mysql -u root -p "在调用本地的mysql客户端进程连接本地mysql服务端
+    >远程连接mysql服务端：
+        1.首先确保远程mysql服务ip、端口可达：
+            "测试服务器已开启mysql服务
+            netstat -anp|grep "3306"    
+            "修改mysql服务器mysqld的监听ip为任意接口,bind_address=0.0.0.0
+            vim etc/mysql/conf.d/mysql.cnf  
+            "测试远程mysql服务可达
+            nc -znv 111.231.109.6 3306  "tcp协议，-z，-n，-v         
+        2.其次创建mysql远程登录用户和用户授权：
+            use mysql
+            "查询所有用户及其授权信息，\G按一列一列显示。
+            select * from user \G       
+            "创建用户root@%,%表示任意主机地址
+            create user 'root'@'%' identified by 'ztf2553614'
+            "给用户roo@%授予所有权限，包括grant权限
+            grant all privileges on *.* to 'root'@'%' with grant option 
+        3.最后登录远程mysql数据库
+            a.通过mysql客户端登录mysql数据库服务端
+                mysql -u root -h ip -P port -p
+#mysql数据库客户端开发:c++development
+    > 基于c-api:
+        直接调用libmysqlclient-dev包(头文件、库)中提供的c-api进行
+        mysql客户端开发。
+        × mysql connector/c实际仍是提供c-api，而不是driver
+        × 专用(不适用于异构数据库)、低效(数据复制)、高兼容(兼容mysql服务端)
+        × 目前我们采用此种方式
+    > 基于connector:
+        通过通用api(实际会调用connector连接、操作)开发mysql客户端
+        通用api------------>数据库客户端开发驱动器:
+        odbc(unixodbc)----->mysql connector/odbc
+        x devapi-----------> mysql connector/c++
+        × odbc 方式更通用(mysql、oracle等);
+          x devapi方式需要mysql server安装x pligin。
+        × 通用、高效(odbc manager 会高效传递数据)、兼容性低
+        × 以后试一下这种通用方式。
+#mysql c-api：
+        即libmysqlclient-dev，也等价于mysql connector/c
+        主要提供mysql连接的初始化、连接、query操作、结果获取、连接关闭等api，以用于m
+        ysql客户端开发，如mysql客户端就使用了，也可使用该c-api开发自定义客户端。
+        其次也提供mysql服务端管理相关api，以开发管理mysql服务端的程序。
+
+    > mysql_init():
+        分配动态内存-初始化或仅初始化MYSQL对象(准确说是 MYSQL* 连接handler)
+        × 返回值:
+            非NULL: 成功，MYSQL* 地址
+            NULL  : 错误，内存不足(insufficient memory)导致分配内存错误。
+        × 错误:
+            NULL:insufficient memory
+
+    > mysql_real_connection():
+        尝试与一个正在运行在host主机上的mysql服务端(引擎)建立(tcp)连接
+        × 应在任何需使用有效MYSQL连接handler的其他api之前调用该函数去建立有效连接
+        × 在调用该api之前，应使用mysql_init()去初始化MYSQL连接handler
+        × 若需更改连接handler属性，应在mysql_init()---mysql_real_connection
+          ()之间调用mysql_option().
+        × 返回值:
+            非NULL: 成功，已建立连接的MYSQL* handler
+            NULL  : 错误，尝试建立连接失败。
+        × 错误值:连接相关错误
+            待续，可见mysql 官方 document
+    > mysql_real_query()：
+        向mysql服务端提交并执行由一条或多条以simicolon分行结束mysql 
+        语句组成的指定字节数的const char*字符串。
+        mysql_query()则是以null-terminal结束字符串
+        × 若该query字符串仅包含一条mysql语句，则query之后只需调用一次
+          mysql_stored_result()或mysql_use_result()
+          对应获取结果集或索引集保存到客户端。
+        × query的mysql语句可以是任意mysql语句
+          如返回结果集的DQL语句:select、show、describe、check table、
+          explain
+          如不返回结果集的语句，如create table等
+        × 若该字符串包含多个mysql statment语句，则需使用mysql_next_result()
+          使得MYSQL*连接handler去指向下一个MYSQL_RES* 结果集HANDLER
+        × 返回值:
+            0    :成功,这意味着sql语句执行成功
+            非0  :错误
+        × 错误:query操作顺序错误、query期间服务器连接断开错误
+
+    > mysql_stored_result():
+        在mysql_real_query()/mysql_query()调用成功之后，调用该函数去读取
+        mysql服务结果集保存至本地:
+        对于select-like query操作的将分配MYSQL_RES内存并保存结果
+        若是non-select-like query操作将返回NULL
+        × 慢且可能占用大量内存
+        × 但可随机获取结果集的任意记录、确定结果集行数、avoid tying up mysql
+          server for processsing each row，donst need to rerieval all rows 
+          of result so that you can switch to process next result set 。
+          
+        ×返回值:
+            非NULL:成功，分配内存再将结果保存至客户端MYSQL_RES* 结果集handler
+            NULL  :成功或错误，成功表示query语句的mysql 语句是不返回结果集
+                   的。可通过mysql_field_count()返回非0或mysql_errno()返回0
+                   或mysql_error返回空串确定是不返回结果集的mysql操作而非
+                   错误。
+        ×错误:
+            见
+
+    > mysql_use_result():
+        不像mysql_stored_result()保存结果集至客户端,该函数仅初始化结果集
+        检索(retrieval)
+        × 快且省内存
+        × 但是必须顺序、快速获取结果集的所有的记录行、直到最后才能确定行数
+        × 返回值：
+            非NULL：同上
+            NULL  ：同上
+    > mysql_field_count():
+        检查MYSQL* 连接handler的最近一次query调用涉及的列数。
+        × 该调用主要作用是检查MYSQL* 连接handler最近一次query操作
+          涉及的列数。因此可在紧接在query之后或result之后针对MYSQL*
+          调用该函数
+        × 另外，在result调用之后返回NULL，可调用该函数去甄别该NULL是意味
+          query操作是没有结果集的non-select-like操作还是result调用错误。
+        × 综上两点，我们的实际使用是统一在result调用之后紧接着调用该函数
+          ，无论query操作包含的non-select-like还是select-like语句
+        × 返回值:
+            =0 : 最近一次query操作是不产生结果集的non-select-like sql语句
+            >0 : 最近一次query操作是产生结果集的select-like sql 语句
+                 如selec、show、describe、explain、check table。
+        × 错误:
+            none.
+            
+    > mysql_affected_rows():
+        检查MYSQL* 连接handler 的最近一次query操作所影响的行数。
+        × 与mysql_field_count()调用顺序有些许类似，特别的是该调用
+          ，针对与select-like query操作必须在mysql_stored_result()
+          之后紧接着被调用。
+        × 实际应用是在mysql_stored_result()调用之后紧接着调用该函数去
+          获取行数，调用mysql_field_count()获取列数。
+        × 返回值:
+            >=0 :query操作影响的行数
+            -1  :错误。
+                如前面的query调用错误;该函数先于mysql_stored_result()
+                调用。
+        × 错误:
+            none
+    > mysql_num_fields():
+        检查非NULL MYSQL_RES * 结果集handler的列数。
+        很显然对应的query操作必须是select-like 语句
+    > mysql_num_rows():
+        同上
+    > mysql_fetch_field():
+        获取MYSQL_RES* 结果集handler的下一MYSQL_FIELD* 字段信息handler
+        (字段名，数据类型，size等)。
+        因此可以循环重复调用该函数以便读取该结果集的所有字段信息。
+        × 返回值:
+            非NULL :成功，保存字段信息handler
+            NULL   :成功，但表示读到最后一个字段了。
+        × 错误:
+            none.
+    > mysql_fetch_row()：
+        获取MYSQL_RES* 结果集handler的下一行MYSQL_ROW* 记录handler
+        可循环重复调用该函数读完所有行。
+        × row[0]--row[mysql_num_field(result)-1]字符指针指向该行的各个
+          字段。row[k]==NULL，表示该字段的值为NULL
+        × 返回值:
+            非NULL :成功，保存记录handler
+            NULL   :
+                读到最后一行--mysql_stored_result()返回的result handler
+                读到最后一行或错误---mysql_use_result()。。。。
+        × 错误:针对mysql_use_result()
+            见
+    > mysql_field_lengths():
+        获取MYSQL_ROW 行handler的各字段值的字符指针指向字符串的长度。
+        × length[0]--length[mysql_num_fields(result)-1]是保存各字段值
+          的长度。length[k]==0 表示该行的该字段值为NULL或为空列，通过
+          上面的row[k]==NULL 表示该行该字段值为NULL确定。
+        × 该调用可以避免使用strlen()处理含null的二进制字段值的错误。
+        × 返回值:
+            非NULL :返回保存当前行各字段值的长度的数组指针。
+            NULL   :错误
+        × 错误:
+            关于mysql_fetch_row()调用顺序错误
+    > mysql_free_result():
+        在mysql_close()之前/mysql_next_result()之前/不需要现有结果集时
+        必须通过调用该函数去释放为结果集分配的内存。
+        × 不要在释放结果集内存之后再次调用该结果集handler
+        × 返回值：
+            none
+        × 错误：
+            none
+        
+
+            
+    > mysql_close():
+        断开一个打开的连接并释放(MYSQL*)动态内存
+        × 也可close 一个connect失败或已close的连接handler
+        × 别使用已经close的连接handler。类比内置指针
+        × 返回值:
+            none
+        × 错误值:
+            none
+    > mysql_errno():
+        获取最近一次mysql api调用错误代码(0表示上次调用成功)
+        × mysql api 调用成功返回<=0或非NULL，调用失败返回>0
+        × 返回值：
+            >0 :表示上次mysql_xxx()调用失败的errno
+            =0 :表示上次调用成功
+        × 错误：
+            none
+    > mysql_error():
+        获取最近一次mysql_xxx()调用的错误描述const char*字符串
+        (空字符串表示上次调用成功)
+        × if(*mysq_error(MYSQLHandler))判断上次调用是否成功
+        × 返回值:肯定返回非NULL
+            非空字符串:表示上次调用失败的错误描述
+            空串      :表示上次调用成功
+        × 错误:
+            none
+#常见使用问题：
+    show databases; "查看有哪些库
+    use dbname    "使用名为dbname的数据库。一个mysql数据实例可存在多个database
+    select database() ”查看当前所在数据库
+    show tables;       "查看当前库有哪些表。
+    select version() "查看mysql服务端版本信息。
+    status           "查看mysql服务端版本信息、连接信息、字符集信息
+            
+
+
+
+
+

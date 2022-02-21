@@ -1,0 +1,1607 @@
+---------------linux使用:系统、命令行、shell脚本、编程开发----------------
+#linux、unix、posix
+    posix:可移植操作系统接口规范，重点规范了内核和应用程序之间的接口，
+          符合posix规范的内核和软件可以相互兼容、即内核的shell命令、接口（系统调用）使用兼容，软件兼容。
+    unix:unix系统兼容x86架构，所以unix系统不需针对不同机器进行修改而移植
+         posix主要针对的就是unix。unp一书采用unix version3 
+         www.unix.org/version3 。unix规范就是posix规范的别名
+    linux：linux开发就是依据poxis.因此linux系统的命令、接口兼容unix，linux上的软件也兼容unix
+    代码移植：若系统之间兼容，如符合同一规范，则可直接移植。
+              系统不兼容，针对不同系统修改源码，再编译，即可。
+#用户帮助：
+
+命令、程序使用：
+        --help：或-h
+            shell外置命令、程序内嵌的帮助命令。较简略
+            如 ls --help;gcc --help
+  > man：shell外置命令、程序的帮助文档。较详细
+    man手册分为9个章节，每个章节包含多个小节。
+    1 可执行程序或 shell 命令(外置命令)
+    2 系统调用(内核提供的函数).man syscalls 查看系统调用有哪些
+    3 库调用(程序库中的函数，包括ansi c标准库libc)
+    4 特殊文件(通常位于 /dev)
+    5 文件格式和规范，如/etc/passwd
+    6 游戏
+    7 杂项(包括宏包和规范，如 man(7)，groff(7))
+    8 系统管理命令(通常只针对root 用户)
+    9 内核例程 [非标准
+    一个手册 页面 包含若干个小节。
+    小节名称通常包括: NAME,概述(SYNOPSIS),配置(CONFIGURATION),
+    描述(DESCRIPTION),选项(OPTIONS),退出状态(EXIT STATUS),
+    返回值(RETURN VALUE),错误(ERRORS),环境(ENVIRONMENT),文件(FILES),
+    版本(VERSIONS), 符合标准(CONFORMING TO),注(NOTES),缺陷(BUGS),
+    示例(EXAMPLE),作者(AUTHORS),亦见(SEE ALSO).
+    eg:
+        man man "查看man 1-9章节及man使用方法.
+        man -f syscalls "所有关于syscalls系统调用的小结
+        man 2 syscalls  "查看系统调用
+        man console_codes "查看终端控制码(输出控制、输入模拟)
+        man environ     "查看环境变量信息
+        
+  > info：命令行网页版的man。较man更详细。
+  > help：shell内置命令（无需fork的）的帮助。type 命令名 查询命令属性
+            如：cd，ulmit等
+            type ulimit "ulimit是shell内置命令
+            help ulimit "只能通过help 查询帮助
+
+# ubuntu桌面快捷键：
+#硬件信息查看:
+  > 系统:
+    × uname -a: 查看内核版本,系统,主机名,cpu架构位数等.
+    × hostname "查看主机名
+    × hostnamectrl set-hostname ubuntu-VM "修改主机名,立即生效./etc/hostname
+  > cpu :
+    × cat /proc/cpuinfo：显示每个逻辑cpu条目信息
+      物理CPU:主板上实际插入的cpu
+      逻辑CPU:机器支持并行的线程数
+　　    逻辑CPU=物理CPU个数×每颗核数 "不支持超线程技术或没有开启次技术
+　　    逻辑CPU=物理CPU个数×每颗核数 *2  "cpu支持并开启超线程技术
+      CPU核心数：cpu中运算单元(ALU,FPU)的数量，如我的神舟是单cpu双核的。
+      超线程:每个核中由算数运算单元和浮点运算单元，这样可以实现一个核心
+             同时处理两个线程的运算。
+      逻辑cpu信息条目：
+        processsor：逻辑cpu序号，0开始
+        cpu mhz： cpu实际主频
+        cache size：2级缓存大小
+        physical id：所在物理cpu的序号。
+        siblings：所在物理cpu的线程数(逻辑cpu数)
+        core id ：所在物理核在所在物理cpu的序号。
+        fpu：是否具有float point 运算单元。
+        fpu exception:是否支持浮点计算异常处理
+        flags：支持的功能标志列表
+        address sizes：可访问内存地址位数
+     eg:
+       cat /proc/cpuinfo|grep "physical id" |sort |uniq|wc -l "物理cpu个数        cat /proc/cpuinfo|grep "cpu cores"|uniq "单个cpu的核数
+       cat /proc/cpuinfo|grep "siblings"|sort|uniq "单个cpu的线程数
+       cat /proc/cpuinfo | grep "processor" | wc l "逻辑cpu个数
+       如本神舟笔记本是单cpu双核，如果不开启超线程，线程数和逻辑cpu数
+       分别为2,2;若开启超线程，则分别为4,4。
+  > 内存：
+  > 硬盘：
+  > 网卡：网络适配器/网络接口
+  > 显卡：
+  > GPU:
+
+
+#linux命令：linux命令实际上是一个程序（进程）。[]表示可省
+    基本命令格式： 
+            命令  [选项]  [参数] //实际是可`多个选项+参数的，
+            也可多个选项共用一个参数
+             命令：谓语，动作
+             选项：状语，对程序执行的修饰
+             参数：宾语，动作的对象
+        eg: ls ；ls -la ；ls -la /
+
+        ！短选项与长选项区别：
+
+         1. 短选项：
+            -修饰;一般位单个字符;短选项一般可连写;短选项的参数以空格连接
+                        如:ps -ef
+         2.长选项：
+            --修饰;不可连写;其参数以空格或=或-连接。
+                     如--size=100 ;--status-all;--size 100
+
+    多重命令：都遵循从左至右执行命令
+        ; :命令之间无相关性，eg：ls ./ ;touch abc;makdir
+        &&:命令之间相关，第一个命令执行成功，才执行下一个命令。
+            错误就立即停止。eg:ls ./test && touch ./test/abc
+            ./test目录存在才会执行touch
+        ||:命令之间相关，直到执行到一个成功执行的命令，便立即停止执行
+            整个命令 eg:ls ./test||mkdir ./test
+            ./test 目录不存在，才执行mkdir
+#linux电源管理:
+    关机:
+        shutdown "立马关机
+        shutdown -h now "请注意马上关机"    "同上，但警告给本机所有会话
+        shutdown -H +5  "halt等价于-h,5分钟后关机
+        shutdown -P 17:00 "poweroff等价于-h，17:00关机
+        shutdown -k "这个是警告信息，但不关机" "给本机所有会话警告但不关机
+        shutdown -c "取消正在执行(pengding)的shutdown命令
+    重启:
+        shutdown -r now "重启
+    待机:
+        echo "standby" > /sys/power/state "待机(仅熄屏)--按任意键唤醒
+    睡眠:
+        echo "mem" > /sys/power/state "睡眠(运行数据存到内存)--按电源键唤醒
+    休眠：
+        echo "disk" > /sys/power/state "休眠(运行数据保存到硬盘再关机)--开机
+# ubuntu快捷键:
+    长按window键   "显示ubuntu系统快捷键
+    alt+tab        "切换应用
+
+# 终端操作：
+  > 终端新建：
+    ctrl+alt+T   "以当用用户目录打开新终端
+    ctrl+shift+T "以当前工作目录在当前终端打开新标签终
+    ctrl+shift+N "以当前工作目录打开新终端,即命令gnome-terminal 
+  > 终端关闭：
+    ctrl+D "在等待标准输入时作用是输入文件尾EOF;没等待标准输入就是退出终端
+  > 终端切换：
+    ctrl+w+w    "vim中窗格之间切换
+    alt+`       "切换终端
+    alt+ctrl+f1至f6	"(本地可视化终端和远程终端)伪终端pts/N切换至虚拟终端ttyN 
+    alt+ctrl+f7 "虚拟终端切换至伪终端：
+  > 清空终端屏幕：
+    clear "ctrl+l
+  > 终端最小化不见了: 
+    新建终端输入 unity命令重启gnome-terminal
+  > 终端编辑操作： 	
+    复制命令：ctrl+shif+c ,如复制粘贴终端中已执行的某些命令
+    粘贴命令：ctrl+shif+v，只能粘贴一次 
+  > 终端缩放:
+    放大:ctrl+shift+=
+    缩小:shift+-
+  > 改变终端名title：
+    "只改变当前终端名-只改变当前bash的PS1变量;写入~/.bashrc或直接命令行
+    function set-title() {
+      if [[ -z "$ORIG" ]]; then
+         ORIG=$PS1
+      fi
+      TITLE="\[\e]2;$*\a\]"
+      PS1=${ORIG}${TITLE}
+    }
+  > gnome-terminal:终端管理
+    eg:
+    " g-t选项帮助
+      gnome-terminal --help-all " 打印gnome-terminal帮助
+    "-x:将该命令行剩余部分作为命令执行;隐式调用bash -c执行命令或可执行文件
+      gnome-terminal -x bash -c "./test" "同下
+    "-e 将该选项的'参数'作为命令
+      gnome-terminal -e 'ls' "新开终端-bash -c ls;ls执行完毕终端退出
+    "在新窗口执行完./TermTest会继续执行exec bash命令--停在bash命令提示符
+      gnome-terminal -e 'bash -c "./TermTest;exec bash"'
+    "设置窗口位置man X 查看geometry说明;80列×55行字节,600像素左偏移80上偏移
+      gnome-terminal --geometry=80x55+600+80 -x ./TermTest
+  > 终端属性:
+    stty -a   "查看当前的终端的termios结构(终端选项-标志;特殊字符)
+    stty size "查看当前终端窗口大小行×列
+    resize -s 40 20 "修改当当前终端大小40列×20行
+    printf("\e]2;贪吃蛇\a"); "c通过终端控制码设置终端标题
+    ioctl(0,TIOCGWINSZ,(char*)&termSize);"c通过ioctl函数获取winsize终端大小
+> 桌面冻结：
+  alt+f2        "打开dash的命令输入框
+  ctrl+alt+f1-6 "打开虚拟终端(文本终端)
+  top           "查看cpu，内存，swap资源使用情况
+  xkill         "如果是某个bash终端使用很多资源，则xkil指定关闭它
+  kill pid      "如果是每个进程占用很多资源，则终止它
+# linux gui开发
+  ———————————————————————————————————————————————————————————————————————
+x window sever(Xorg(ubuntu16)或xfree86或xnest实现):输入键盘鼠标事件分发、处理;输出窗口、图形绘制
+    |
+    |
+    |
+  ——|——————————————————————x window protocol—————————————————————————————|————————————
+    |                           |                                        |
+    |                  xlib(客户端开发基础库)|                           |                 
+    |                           |                                        |
+|glib和gdk库：更为底层与x window|无关的库便于移植|                       |   
+    |                           |_____                                   |
+    |                           |     |                         |基于termios结构体            |
+  |gtk|------图形界面库-------|qt|   |xterm终端|                |ncurses(字符(文本)用户界面库 |
+   / \                          /
+  /   |                 |kde图形界面操作环境|
+  |    gnome-terminal(gui like终端)控制码序列:实现鼠标定位;窗口标题;输出特效)
+|gnome图形界面操作环境(ubuntu图形桌面)
+# 基于gnome-terminal的(gui like)字符图形界面应用程序开发
+  > 设置终端标题：
+     × pritnf("\e]1;贪吃蛇\a"); "\e]1;控制码序列设置窗口标题 \a序列终止符
+     × PS1=${PS1}"\e]1;贪吃蛇\a" "g-t -x 命令产生的终端的环境变量没有该变量
+  > 设置终端大小:
+    "终端大小改变时都会接收SIGWINCH信号，此时winsize结构体保存终端大小信息
+    //winsize在终端创建后是空的，必须进行窗口大小初始化设定
+    struct  winsize termSize;
+    termSize.ws_row =24;
+    termSize.ws_col =80;
+    ioctl(0,TIOCSWINSZ,(char*)&termSize);
+    //
+    signal(SIGWINCH,PrintWinSize);
+    void PrintWinSize(int signal){
+    struct winsize termSize;//
+    ioctl(0,TIOCGWINSZ,(char*)&termSize);//只有窗口大小改变,才会设置winsize
+    int winRowByte = termSize.ws_row;
+    int winColByte = termSize.ws_col;
+    printf("ROW：%d,COL：%d\n", winRowByte, winColByte);
+  }
+# 标准输入、标准输出、(控制)终端
+        read(STDIN_FILENO) write(STDOUT)
+                  ^            |
+                  |            |
+                  |            |
+           |终端设|备/dev/pts/N||
+                  |            |   
+                  |            |
+                  |            ν
+       |——>输入队列--?->输出队列——|
+ ——————|——————————————————————————|—————————————
+       |                          |
+       |                          |
+       |   x window server (Xorg) |
+ ——————|——————————————————————————|———————————————————
+       |                          |
+       |                          ν
+ 鼠标键盘设备驱动         显示器设备驱动
+       |                          |
+    鼠标|键盘                  显示器
+# 终端io：./program/项目/c_c++/自编工具/控制台测试/main.c
+> struct termios:
+  termios结构体存放终终端设备驱动程序的
+  输入选项、输出选项、控制选项、本地选项、特殊字符等终端属性设置
+  × 非规范模式：
+    终端的输入不在装配成一行。即我们在终端键盘输入时不用再键入enter键
+    才实际写入终端的输入队列。
+    终端不对特殊字符换行(enter)、eof(ctrl+D)等处理，只会将其放置到
+    终端的输入队列，read可读取他们的字符值。
+    在该模式下，输出还是按行处理,即printf标准输出流还是行缓冲，
+    我们可以在printf中加入换行符\n，或者后续调用fflush进行缓冲刷新
+    " 下面代码:键入abc不用键入enter键，abc也能送给终端输入队列(标准输入)
+    " 如果abc三个键按的很快，可能会延时2秒输出。
+    tcgetattr(0,&old_termios);
+    new_termios = old_termios;
+    new_termios.c_lflag &= ~(ECHO|ICANON);
+    new_termios.c_cc[VMIN] = 1;//read读取[vmin,nsize]，可能一直阻塞
+    new_termios.c_cc[VTIME] = 0;
+    tcsetattr(0, TCSANOW, &new_termios);
+    .
+    .
+    .
+     while(read(0,&keybuf,sizeof(keybuf))){
+       printf("\033[47;31m\033[5m char: %d\033[0m\n",keybuf);
+       sleep(2);
+    }
+
+#参数待换：
+    > 问题：
+      a.无法将|管道的标准输出定向为诸如，rm等命令的标准输入
+      b.一些命令有多个参数(src,des),管道|也无法将标准输入定向至哪一个参数，如cp ，mv
+
+    >  xargs：
+        对参数的处理和分发
+        这是对不能直接使用管道命令重定向的补充命令
+        等价于使用`命令 参数`的结果作为命令参数
+        rm `ls|grep -w  ".sh$"` "ls结果一个文件名就一行
+        xrags默认规则：
+        默认将以空格和换行符进行划分，将结果组成以一个空格隔开的一行
+        并作为后续命令的标准输入。 默认后续命令是echo。
+        即：
+            a b
+            c d
+            ==> a b c d
+        eg: 
+            "组成一个单行参数 a b c d
+            ls ./|xargs  "默认后续命令是echo，这时输出一行
+            ls ./|xargs ls "错误，因为ls 不能接受一行参数。
+            "单个参数多批次调用后续命令。a-->{} b-->{} ....
+            ls ./|xargs -i ls {} "正确
+            ls ./cpplanguage|grep -i "^stl"|xargs -i mv ./cpplanguage{} ./stl_usage 
+        -i: 参数的划分后，不按照默认方式组成一行
+            而是将被划分的单个参数，作为{}的替代，多批次的调用后续命令
+        -0: 取消特殊字符作为参数分隔符，如空格，换行符号。所有参数一批次输入
+        -d:指定分隔符，|xargs -d ' ' -d ' e'
+        -l:一次一行参数输入命令。注意行末是空格则xargs不视为换行！注意空格！
+        -n: -n N ,一次N个参数输入命令。注意空格！
+        -p：每执行一次命令就询问一次
+        -t: 每执行一次就自动打印一次执行过程（不显示结果）：命令+参数
+        最佳使用：
+        eg:
+         1.find  "$PWD" -name "*"|tail -n +2|sed "s/^/'/g"|sed "s/$/'/g"|
+            xargs -n 1 rm -f或-l rm -f 
+            "文件名的首尾增加单引号或双引号解决文件名含空格问题！
+            含空格时，-l(文件名末尾有空格导致两行视为一行) 
+            或-n 1(文件名中间有空格，导致分隔成多个参数)都解决不了
+        2.find  "$mypath" -name "*"|tail -n +2|grep -E ".cpp$|.h$|.c$"|sed
+          "s/^/\"/g"|sed "s/$/\"/g"|xargs -n 1 rm -f 或-l rm -f
+           "tail:不取前2-1=1行，该行是mypath变量的值
+          "双引内可以输出'和转移字符\"  ;单引号不可以输出这些，其只能空格
+        "多行文件名复制.find得到的是多行文件名，xargs将这些文件名行组成空格隔开的一行
+          find ./ -maxdepth 1 -type f|xargs cp -t ./备份 "作为cp的第一个参数
+          
+
+#linux文件：一切皆文件
+    > 字符编码格式：文本文件（text），以某种编码格式存储在计算机中
+        ×ASCII：一个字符一个字节编码-128各字符编码
+        ×ISO-8859-1：即latin1,在ascii基础上，利用最高位-256个字符编码
+        ×GB2312：双字节编码-包含简体中文
+        ×BIG5：双子节编码-包含了繁体中文
+        ×GDK：双字节编码-包含更多的简体中文。扩展并兼容gb2312,但不兼容big5
+        ×UNICODE：世界通用的编码字符集。具体的字符集编码由utf-8(1-4个字节不
+            定长编码),utf-16(2或4字节),utf-32(4字节)
+  > 字符编码格式转换：一定要确保环境和数据编码格式一致
+        ×原因：某种编码格式的数据，如文本文件、代码中的字符串，被用于另一
+            环境（系统-bash-gt-vim-db）进行操作（显示、存入数据库），由于
+            编码方法的差异，可能对编码数据进行错误的译码。
+            eg：vim 打开编码格式为gbk的flamingo 的chatserver的main.cpp
+                时，中文显示乱码
+            原因：vim设置的编码格式里面未包含gbk，则vim选择最末尾的支持的
+                编码格式latin1（iso-8859），打开该文件，而iso编码格式的
+                字符集不支持中文，因此显示中文乱码。
+    × 查看、修改字符编码格式：
+      ×× 用户-bash-终端字符编码：
+          三者是一致的
+         我们通过一个问题来说明：
+         问题：
+           openssh远程连接腾讯云主机ubuntu用户，键入ls，显示中文文件名乱码
+         原因：
+          云主机ubuntu用户字符编码格式是en_US.utf8
+          即字符编码格式是utf8,所有中文能正常字符编码。显示格式是en_US.
+          显然，当通过ssh登录上ubuntu，键入ls，中文虽然编码正确但不可显示
+          因为显示格式是en_US.
+         解决：
+           登录云主机
+           echo ${LANG} "一看是en_US.UTF8，这显然不能显示中文,改成中文
+           locale -a    "一看还没安装zh_CN.UTF8,
+           apt search language|grep "zh" "模糊搜索具体包名
+           sudo apt install language-pack-zh-hans "下载zh_CN.UTF8
+           locale -a           "一看安装了，但是还需配置以启用
+           echo "export LANG=zh_CN.UTF8" >> ~/.bashrc  "配置
+           source ~/.bashrc   "source 配置文件  
+        
+                             
+            × vim编码格式：vim内输入
+                :set encoding [=编码格式] "显示或临时修改vim的编码 
+                !以上为vim内的菜单，新建文本的默认编码格式，一般该编码格式
+                继承自环境变量LANG。
+                :set fileecodings[=编码格式1,编码格式2] "显示或临时修改
+                "vim打开文件的编码格式选择列表，未查到则使用最后一个编码格式
+                :set fileecoding[=编码格式] "显示或修改当前文件的编码格式
+
+            !当打开文件的编码格式不在fileencodings列表中，则打开可能乱码
+        × 查看、修改数据（文本文件、字符串等）的编码格式
+            ×查看文件字符编码格式：
+                file filename ”显示的结果与vim中:set fileencoding 显示结果一
+                 ”致，但显示的结果不一定正确很可能是没在列表中
+            ×修改文件的字符编码格式：
+                iconv --list "查询iconv支持的格式
+                iconv -f oldencoding -t new newencoding filename -o output
+                ”vim内:set fileencoding虽转换了编码格式，但仍乱码
+                "需指定-o 输出文件名，否则转换结果只显示在终端上。
+                ”转换无效时，通过file 获取的oldencoidng类型不正确，可使用
+                “gbk试试
+
+        ×查看文件(文件夹等一切文件)的相关信息(权限,用户和用户组,创建时间等)
+            ls:默认不深入列出当前非隐藏文件(文件夹)的名字
+            -l：列出详细信息，如权限，用户和用户组，字节数等
+            -R：递归列出文件夹所有层的文件
+            -a：列出所有文件包括隐藏文件，. 和..两个文件
+            -d：仅列出文件夹本身，不列出里面的文件数据。
+            -F：根据文件种类,添加符号。如可执行文件*,目录/,socket =,fife|等
+            -i：列出文件inode
+            eg：
+              ll  "等价于ls -laF,显示所有文件的详细信息
+              ls -R "深入递归列出文件名
+
+        *查看文件统计信息（字节数、字数、行数、最长行的字数）
+            wc:
+            -c:字节数
+            -w:字数
+            -l:行数
+            -L:最长行的字数
+
+    > 文件输入、输出、数据流重定向
+        ×文件输入：文件不存在，则自动建立
+            a.vim filename：
+            b.echo "字符串">>filename:echo的输出内容输出重定向至文件尾部
+            c.cat >filename:在终端手打覆盖写入filename，ctrl+d
+            （写入文件结束eof）。若该文件不存在则自动建立 
+            d.cat >filename <<"eof":同上，但是新建一行输入eof，再enter后写入
+             结束.此处必须<<,不能<
+            e.cat >filename < ~/.vimrc:将~/.vimrc复制给filename,必须<!不能<<
+        ×文件输出:输出至终端(默认)或是其他文件(输出重定向)
+            a.cat：从首行不分页，全部输出文件
+                cat -nA ./test.txt "带行号且输出特殊字符(如结尾$)
+            b.tac:
+            c.
+            d.
+            e.
+            f.
+        × 数据流重定向：
+            ×输入重定向:<和<<,即将文件重定向标准输入0(无须0<<),实现自动交互
+                eg:testautoinput.sh < input.txt "此处只能是<不能<<,只能文件(作为输入参素)
+                   cat >f1<f2   "通过f2创建f1文件
+                   testautoinput.sh < 4 2或<4<2 "错误。左端只能是文件！
+            ×输出重定向：>和>>,
+                eg:cat filename1 >filename2 "f1覆盖式输出至f2,等价于cat f1 1>f2
+                   cat f1 > f2 > f3 "f1覆盖式输出至f2,f3,等价于cat f1 1>f2 1>f3
+                   cat f1 >> f2 "f1追加式输出至f2,等价于cat f1 1>>f2
+                   cat f1 > f2 2 > f2 "f2文件只保留标准错误信息
+                   cat f1 >f2 2 >&1 "f1,标准错误先后输出至f2(f2清空，f1信息后追加标准错误信息)
+                   ./test.sh >f1 2>&1"同上，标准输出，标准错误先后
+                   cat f1 &> f2 "同上
+> 硬链接与软连接
+  ×  硬链接：
+     ln oldfile newfile
+     文件的别名，即连个不同名文件指向同一个inode，因此，删除其中一个
+     也不会删除文件(inode).不可跨文件系统、不可针对目录。
+  × 软链接：符号链接
+     ln -s oldfile newfile
+     文件的快捷方式文件，指向不同的inode，可以跨文件系统、可针对目录、
+     ll ./ 看到的文件类型l 就是指软连接，其文件大小也小，因为软链接文件
+     中存放的就是指向文件的路径。可作为快捷方式，可作为跨文件系统
+> section、block、inode:
+>
+
+
+#Linux fhs文件层次结构系统：
+> 列出目录树：
+        a.ls -R:递归列出当前目录下所有文件。视觉不友好。
+        b.tree:默认列出所有层的文件名
+            -a:递归里出所有层
+            -L :指定列出几层，eg.tree -L 2 列出两层
+            -f：列出路径
+            -d:递归只列出所有目录
+         $:表示一般用户
+         #：root用户
+
+> fhs linux文件层次化目录结构
+    ～：用户home目录
+    /：根目录
+
+    /etc:系统、主机、网络、各种软件等配置文件存放目录,系统级。
+        /etc/share：系统级可共享软件配置目录。如usr/share/vim vim系统
+                    级配置文件目录
+        /etc/passwd:root用户名和一般用户名、加密的密码、用户组、
+                    起始目录等存放目录。
+   --/etc/shadow:所有用户的密码存放目录
+   --/etc/group:系统中所有组名存放目录
+   /etc/nginx:nginx服务器的配置文件nginx.conf所在目录
+
+   /usr/：unix系统资源目录，存放系统自带的函数库、头文件A
+       |__/bin:大部分用户可使用的命令
+       |__/include：c/c++相关系统、标准库头文件
+          eg:
+            /usr/include/c++/7/bits/ "stl头文件路径
+            /usr/include/x86_64-linux-gnu/bits/ "unix系统调用头文件路径
+             |__ <dirent.h>
+          
+       |__/lib/:
+          eg:
+          " gnu/gcc c++标准库包含stl库
+          /usr/lib/gcc/x86_64-linux-gnu/7/libstdc++.so  
+      程序的库文件所在目录(有时也可叫模块，如php)
+      库文件的后缀名常为:
+      .so:c/c++的动态库,php的模块
+      .a:c/c++静态库
+      .py:python模块
+
+      /usr/lib/php/20152012/:php已安装的扩展模块目录
+      /usr/lib/x86_64-linux-gnu：存放了很多库,libmysql.a/so等
+      /usr/lib/python3.5/：python模块目录
+   --/usr/sbin：root用户可使用的命令
+   --/usr/local：用户自行安装、开发的的安装目录
+      --./bin
+      --./include:
+      --./lib:
+      --./etc:
+      --./share:
+      --./src:
+   --/usr/share:可共享的、不分硬件架构与/usr/bin相关的数据和
+                文件。如软件的图片
+      --./man:man文件
+      --./doc:软件杂项说明
+      --./zoneinfo:时区有关文件
+   --/usr/src：源码？？
+
+  × /var ：
+      /var/log:程序的日志命令
+          /var/log/nginx目录:nginx服务器error.log、access.log
+      /var/www/html:typecho等建站资源存放的根目录i
+
+> lsof ：列出已打开的文件信息
+  我们知道unix一切皆是文件，那通过lsof可知进程
+  打开了哪些套接字/fifo/可执行文件/静态库/动态库/目录等文件
+  lsof输出，主要看两个字段信息:FD-文件描述符类型;type-文件类型
+  通过TYPE字段我们知道文件的类型
+  通过FD字段我们知道文件具体指的是什么文件、文件状态(可读/写)、文件锁。
+  选项：
+    -p "指定进程
+    -P "端口显示端口号而不是端口名
+    -n "网络文件
+    -i "指定条件。-i:port;-i@ip;-itcp;-i4
+  eg:
+    lsof -nP -i:22"列出"使用22端口"条件的进程的网络文件(套接字)且显示端口号
+    lsof -p pid"指定进程.在flamingonote中我们将用此检测rsyslogd日志守护进程
+
+
+
+
+#shell与bash:
+    echo $SHELL:查看当前用户shell的路径
+
+    /etc/shells：本系统所有类型的shell路径
+
+# bash环境配置：
+    ???Linux登录过程中加载配置文件顺序：
+    /etc/profile → /etc/profile.d/*.sh → ~/.bash_profile
+    → ~/.bashrc → [/etc/bashrc]
+    > 配置方法：
+    × 对环境变量的临时改动？
+    × 从相关配置脚本中去改动？
+    
+  环境变量配置、自定义变量配置、命令别名配置、
+   × 提示符配置：
+     ×× PS1变量：
+        设置命令提示符的长度、组成、颜色
+        \[\033[01;36m\]@\[\033[00m\]
+     ×× PS2变量：
+        配置终端键入\后换行输入后命令后续字符串的提示符，默认是>
+        eg:
+          ls \ "换行继续输入提示符为>
+          PS2="continue->:
+          ls \ "此时变为了continue->
+     ×× PS3变量：
+        配置shell 脚本中select语句的输入提示符,默认是#？
+        eg：
+          -----test.sh
+          #!/usr/bin 
+          #PS3='Select a day (1-4):' #更改select输入提示符为这个select a day
+          select i in mon tue wed exit
+          do
+            case $i in
+              mon) echo "Monday";;
+              tue) echo "Tuesday";;
+              wed) echo "Wednesday";;
+              exit) exit;;
+           esac
+         done
+
+          ------
+     ×× PS4变量：
+        在shell脚本的开始出加入set -x 语句，可在shell脚本执行时输出每条语句
+        这样便于我们调试脚本，但打印执行语句的前缀是+，可在set -x
+        之后加入PS4="$0.${FILENO}>",修改前缀为"脚本名.行号>"
+        
+    用户无论是执行shell脚本还是终端输入命令执行都会调用shell。
+    login shell和non-shell：
+        loginshell：打开shell需要用户密码登录，如tty1-tty6虚拟终端
+        non-loginshell:打开shell无需用户密码登录，如windows x下的图形终端
+  > bash配置文件加载:
+    /etc/profile：系统整体配置文件，所有用户。慎用
+    ~/.bashrc:当前用户配置文件，仅当前用户。
+
+#ubuntu软件管理:
+                 ubuntu系统是debian系，而debian系（debian、ubuntu）
+                 支持dpkg（.dep包）、apt、源码（tar压缩包）三种软件管理（安装）方式。
+                 软件包;安装;配置文件;库文件
+
+  > dpkg:本地安装（需自行下载.deb包）;不解决依赖关系;无包管理数据库。
+                安装：dpkg -i 包名.deb
+                卸载：dpkg -r 包名 删除软件包
+                      dpkg -P 包名 删除软件包和配置文件（清除）
+   × 查看：
+     本地查找相关软件/lib包是否安装，安装的版本等信息
+     dpkg -l 包名或 "包名显示已安装包信息版本-架构-描述。(包括apt安装的)
+     dpkg -L 包名 "包关联文件安装路径（包含apt安装的包）
+     dpkg -c 包名 "仅针对deb包的查看所有文件，目录的属性
+
+  > apt:在线安装：
+    解决依赖关系;apt任何操作都是基于其本地管理apt包信息数据库，因此
+    因及时调用apt update 及时更新该数据库。
+    包类型，包可以是binaries二进制可执行文件或lib库包
+    × 安装：
+      apt intsall 软件名[=版本]
+    × 卸载：
+      apt remove  软件名 "删除二进制安装程序
+      apt purge   软件名 "删除整个软件，包括配置文件
+    × 查看：
+      从本地apt数据库查询提供的包所有(已安装/可更新)版本/描述/包内容等信息
+      apt show 包  "列出该包名的详细信息(版本,大小，作用等)。好用。
+      apt list 包名 "查看该包所有已安装/可更新版本,-a所有版本,--upgradable
+      apt search 包名"列出包名模糊查找后相关包版本和包类型.显示安装/可更新
+      apt-cache madison 程序名  "列出该包所有可用版本-来源。
+      eg:
+        "只知道模糊名称，查找其安装包
+        apt update
+        apt search mysql|grep -A3 -B3 "client"|grep -A2 -B2 "bin"  
+        从上结果指定mysql相关的客户端二进制可执行文件为mysql-client
+        apt install mysql-client "安装mysql客户端包
+        apt-file update "
+        apt-file list mysql-client "查看mysql-client包内容
+            
+        "查看包类型，是lib还是binaries
+        apt search mysql-client "一看是个binnaries可执行文件
+
+        "查看包内文件的安装路径
+        dpkg -L mysql-client "对于binnaries,不显示其可执行文件路径，显示doc
+        dpkg -L libbsd-dev   " 对于lib库包，显示其doc，lib文件的安装位置
+        |grep -E "\.a|\so"   " 只关心其中的库文件安装位置
+        which mysql "mysql可执行文件安装位置应该在/usr/bin，使用which
+
+        "查看你mysql-client包的安装版本和可更新版本
+        apt update "更新本地apt信息库，以便下面apt list查询
+        apt list -a mysql-client "mysql客户端包所有版本信息
+
+        " 查看apue书籍实例编译所需的libbsd-dev是否安装/安装版本/可更新版本
+        apt update
+        apt list -a libbsd-dev "安装/可更新-版本
+        apt list --installed   "列出所有已安装的包版本
+
+        " 查看包详细信息
+        apt show libbsd-dev "包详细信息，可知该包提供bsd系统实用函数
+        " 查看包较为详细信息
+        dpkg -l "列出所有已安装(包括apt安装)的包较为信息信息。
+        dpkg -l libbsd-dev  "包较为详细信息，包名-版本-体系-描述
+
+                清理软件安装包：
+                      apt autoclean  " 清理不可再用的软件包,如低版本安装包
+                                     " apt clean 清理所有已下载的软件包
+                      apt autoremove "完成卸载后调用该命令用于清理依赖包  
+                升级：本地apt数据库，包含你可以安装的包信息。
+                      apt update  "更新本地apt数据库的包的版本-架构信息
+                      apt upgrade "升级所有软件,往往apt update&&apt upgrade
+                                  "没安装则安装;安装则更新
+
+                        
+                      
+         
+    >源码安装:
+        ×源码的下载：
+            wget:
+                更擅长下载ftp服务器上源码包（如.tar.gz、.tar.bz2)
+                -P:指定保存路径
+                -O:重命名文件名，附带指定路径
+                -c:断点续传
+                --limit-rate=30k:限速下载
+            curl：
+                下载但擅长web模拟get/post/put/delete请求
+                -o: 输出到指定文件。
+                -C:断点续传
+                --limit-rate 30k:限速
+                -v显示详细请求过程(额外显示http请求和http响应)
+                -i只显示http响应报文
+                -I只显示hhtp响应头部信息
+                eg：
+                curl www.baidu.com "只显示http响应报文正文信息。
+            git clone :
+                专用于下载（克隆）github的源码（.git）
+                git clone 网址.git mydir "git下载仓库存放在空的mydir文件夹
+        × 源码压缩包解压：
+            tar:
+                -c:打包
+                -x:解压
+                -t:查看打包文件中的文件信息
+                -z:gzip
+                -j:bzip2
+                -f:需处理的文件名,建议分开该参数，如下
+                -v:处理时显示详细过程信息
+                -C:解压到指定目录
+                压缩:
+                tar -cvz -f zipname.tar.gz file1 file2 
+                解压:
+                " .tar 表示tar打包;.bz2表示bzip2压缩格式
+                tar -xvj -f zipname.tar.bz2 -C ./mycatalog
+                查看：
+                tar -tvj -f zipname.tar.bz2
+            zip:zip压缩格式的压缩
+                -r:递归目录*
+                zip desfile srcfile "压缩文件
+                zip -r desfile srcfile "压缩文件夹
+            unzip:zip压缩格式的解压
+                -d:指定解压后的存放目录
+                -l:查看压缩文件的有哪些文件
+                unzip -d desfile|desdir srcfile
+            
+
+        × 编译与安装
+            cd 源文件目录
+            ./configure "检测编译环境(架构，系统，编译器)并生成makefile文件
+            make        "make当前目录下的makefile进行自动化编译
+            make install     "安装，即
+            上述等价于: ./configure&&make&&make install
+
+# 用户和用户组：
+
+> 实际用户、有效用户、拥有者： 
+    实际用户:当前用户身份。UID
+    有效用户:当前使用文件的有效用户身份。EUID
+    拥有者:文件的拥护者，其默认权限是文件(0777-0002)、目录(0666-0002)
+    当zitengfei用户中执行su，此时有效用户就是实际用户zitengfei，
+    但是su要访问/etc/passwd文件，有效用户zitengfei没有权限访问root所拥有
+    的该文件。
+    × 有效用户一般是实际用户，根据文件的权限，我们知道这个有效用户
+      有哪些权限，显然只有当有效用户是文件拥有者时才具有文件拥有者用户权限
+    × suid 权限只针对具有x权限的可执行文件且在其运行期间有效，使得有效用户
+      变为文件的拥有者，而不是实际用户。
+    su zitengfei
+    sudo chmod u+s su"设置su可执行文件的suid权限,使有效用户为su的拥有者root    su  "zitengfei用户执行su，实际用户为zitengfei，但有效用户已变为root
+> 用户-用户组：
+  root用户在所有组;root具有任何用户针对文件的权限。
+  即便zitengfei所拥有test，其权限为：
+    -rwxr--r-- "zitengfei和root用户都能执行test
+    -rw-r-xr-- "只有root用户可以执行test
+
+#文件与目录：
+> 文件权限查看:
+  ll filename "查看文件权限，类型-文件拥有者-所在组-其他组
+  whoami      "查看当前登录用户，也就是实际用户，一般也是当前文件的有效用户
+> 有效权限：
+  有效用户针对该文件的权限。
+
+  
+    >文件查找
+        ×可执行文件查找：
+             which：当前用户PATH环境变量中的目录下查找可执行文件。
+                -a：显示全部，而不是第一条查找结果
+        × 文件名查找:查找相关的文件或目录
+            whereis:数据库查找，速度快但数据库信息不及时更新。
+            只在/usr/下查找？？
+            -b：查找二进制可执行文件
+            -m：/usr/share/man/下查找说明文件。
+            -s:源文件
+            -u:除上述三者外的其他类型文件
+        
+        × locate：
+            /var/lib/mlocate数据库中查找各种文件，建议使用updatedb
+            即使更新数据库.
+            默认是区分大小写不完整查找文件的绝对路径
+            -i:忽略大小写 （locate结果较详细）
+            -r：后面可接正则表达式
+
+    × find: 
+      find [path] [option] expression],磁盘查询，速度慢，
+      但数据更新及时
+      默认是对目录的递归查找符合条件的目录/文件等，
+      完整且区分大小写，但可通配符。
+
+      -path:路径，默认该路径下递归查找
+      -option:选项，调整命令，
+         -name filename "以文件名搜索。
+         -path pathname "匹配路径
+         -type f        "指定文件类型
+         -inum inodenum "指定inode，ls -i查看inodenum
+         -ok            "将查找结果作为后接命令的参数.等价-exec
+         -regex "regexpression" "匹配正则表达式
+         -iregex "ReGeexpression" "忽略大小写匹配正则表达式
+         -maxdepth "最大递归深度
+         -mindepth "
+      expression：如何描述查询对象和对查询到的对象做什么。
+      eg:
+      find / -name '*Time*.c' "根目录递归查找含Time字符串的.c文件名
+      find ./ -inum 1111111 -ok rm {} \;"删除特殊符号文件名的文件.ls -i查inode
+      find ./ -maxdepth 1 -type f -exec cp {} -t  ./备份 \; "多行-多次cp
+      find ./ -maxdepth 1 -type f |xargs cp -t  ./备份 "一行-一次cp.见xargs
+
+            
+
+    > 文件内容查找:
+    > 文件、目录的复制、
+    > 创建目录：
+       mkdir mydir "在当前路径下创建mydir文件夹--如果已存在，则不能创建
+    > 文件移动:
+        mv [-if] 目录或文件 目录或文件
+            -t:指定目的文件或文件夹
+            -i:覆盖询问。默认是直接覆盖，不询问？
+            -f:直接覆盖同名文件
+            eg:
+            mv test.txt ./          "移动文件
+            mv test.txt mytest.txt  "相当于重命名
+            mv ./dir    ../         "移动目录dir
+            mv ./dir    ./mydir     "重命名目录dir
+            mv ./dir/*  ./mydir     "移动目录dir下的所有文件和目录
+            mv a b -t ./mydir       "移动多个源时需-t指定目的地
+            ls ./srcdir |grep -i "^stl"|xargs -i mv ./srcdir/{} ./desdir "注意./srcdir/{}
+     > 文件删除:
+        rm：删除文件
+            -f:
+            -r:递归删除，删除文件夹
+            如：
+            rm -r ./mydir "连同子目录一起删除
+    > 文件复制:
+        cp:
+            -r:复制目录到desdir目录下。
+               如果目的文件夹下存在同名文件夹，则是融合，不是覆盖
+            -p：
+            -t:目的目录
+            -i:覆盖前进行询问。默认是不询问，直接覆盖。
+            eg:
+              "复制目录(文件夹)
+              cp -r ../srcdir ./       " 默认副本目录名名为同名
+              cp -r ../srcdir ./desdir "指定副本目录名为desdir。
+              "复制目录下的所有文件，包括目录(递归)
+              cp -r .srcdir/* ./des "
+              "复制目录头层的文件，不包括目录。
+              find ./ -maxdepth 1 -type f|xargs cp -t ./备份 "xargs将find结果转成一行参数
+              "移动所有不区分大小写stl开头的文件分批次进行复制
+              ls ./cpplanguage|grep -i "^stl"|xargs -i cp -ir {} ./stlusage
+
+    > 文件选取行：
+        head：顺序显示文件内容，默认是前10行
+            head -n k   ”显示前k行
+            head -n +k  "同上
+            head -n -k  "显示除后k行之外的
+            eg:
+              cd ~/program/c++理论与编程实际
+              cd  `find ./ -name "内存"|head -n 2|tail -n +2` "第二个文件
+        tail：顺序显示文件内容，默认是后10行
+            tail -n k   "显示后k行
+            tail -n -k  "同上
+            tail -n +k  "显示除前k-1之外的行
+            head -n 30 ./test.txt |tail -n +10  "显示10-30行
+        
+        
+
+#进程、服务
+    > 进程查看：
+        × ps: 查看进程,进程可是命令或程序
+            默认显示当前bash相关的进程，即最上层父进程是
+            你自己的bash，不是init进程。一般显示两个进程：
+            bash进程和ps进程。
+             -e:系统所有进程
+             -A:系统所有进
+             -a:不与终端相关的所有进程
+             -u:有效使用者相关进程
+             -o :指定字段uid,ppid,pid,pgrp,sid,tty,comm,stat
+             -f：较为完整的信息 
+             -l:更为详细的信息
+             -L：列出进程的相关所有线程(LWP)pid,多线程时查看线程pid
+             -r：正在运行的进程
+            
+              
+             eg:
+                ps:
+                  只显示当前bash和ps两个进程的PID TTY TIME CMD
+                ps -eo ppid,pid,pgrp,sid,comm,tty  [常用]
+                  指定字段输出所有进程信息
+                ps aux:
+                    BSD风格，显示系统所有进程
+                    bsd风格在stat字段会显示区别system v进程stat字段信息
+                    bsd风格stat字段:s(会话leader);l(多线程);+(在前台进程中)
+                    eg:
+                    gnome-terminal -x ./TermTest 
+                    ps aux|grep "TermTest" "bsd风格该进程stat为Ss+
+                    gnome-terminal-server进程为./TermTest进程产生的窗口
+                    并将setsid(./TermTest) -新会话且会话leader且前台进程组
+                ps -aux：
+                    system v风格，默认是显示用户名x的进程信息，当x不
+                    存在时，ps 将-aux解释位aux，因此，为了显示系统所有
+                    进程应使用ps aux。
+                ps -ef：
+                    系统所有进程信息(syste v风格)。等价ps -Af，更详细信息可
+                    使用ps -el。与ps aux一样常用。
+                    不显示pgrp和sid
+                ps -u 用户名：
+                    有效用户进程
+                ps axjf:
+                    显示系统所有进程详细信息进程,很好用，
+                    包括显示其ppid pid pgid spid,不显示lwp线程 
+                ps -efL：常用
+                    在显示系统所有进程信息的基础上，还是线程信息
+                    lwp，nlwp
+                pstree -p:常用
+                    简约显示系统所有进程的进程树(包括线程)，-p显示pid
+                    效果干净。
+                ps aux|grep "mysqld" "查看mysql的服务器端mysqld的进程信息
+            
+            -l更为详细的信息：
+                F：进程权限标志
+                S：进程运行状态.man ps|less|grep "state" "查看进程状态
+                UID：拥有该进程的用户名
+                PID：进程id
+                PPID：父进程id
+                C：cpu资源占用百分比
+                PRI：进程被cpu执行的优先级，值越小越优先
+                NI：
+                ADDR：进程在内存的那个位置。
+                SZ：进程用掉内存的大小
+                WCHAN：进程是否在运行。wait表示，该进程正在等待
+                STIME：进程启动时间
+                TTY：启动该进程的终端名,
+                        虚拟终端：ctrl +alt +f1～f6,终端名为ttyN
+                        图形终端、远程终端：pts/N
+                        两者均为伪终端。
+                TIME：该进程实际占用cpu时间
+                CMD：执行该进程的命令
+    × top:持续动态的显示所有进程信息
+        top支持内部命令，键入top命令后，在top窗口键入以下命令：
+          u :显示指定用户的进程
+          k :发送信号15-SIGTERM给指定进程，以便终止它
+    > 进程终止:
+    > 进程关系：
+        × 终端管理进程：
+          gnoem-terminal 进程负责管理终端设备
+          而终端设备是/dev/pts/N ,即伪终端:本地图形化终端和远程连接终端
+        × 控制终端:
+          可视化bash就是关联了一个终端设备，我们称此为控制终端
+          当我们关闭一个终端，就是将此控制终端与gnome-terminal挂断，
+          sighup信号会发送给该控制终端的整个会话--sighup发给会话leader
+           bash，bash再进此信号发给各个进程组leader，进程组leader再发给
+           组内各进程。
+        × 会话:
+            一般用户打开一个终端会自动运行一个bash进程。
+            该终端提交的所有进程一般属于同一个会话，
+            而该终端的这个bash则是会话首进程。
+        × 进程组:
+            如管道命令a|b|c,形成一个以a为进程组组长的正常组
+            如gdb 调试进程a，则gdb和a进程默认是一个进程组。
+            a.通过传递信号给进程组，进而批量操作同一进程组的所有进程。
+              eg:
+             终端键入ctrl+c/ctrl+\/ctrl+z，而这些信号会传递给前台进程组组长
+             使得该终端的前台进程组所有进程
+             中断/终止/挂起(SIGINT/SIGQUIT/SIGSTP)
+            b.所有会话最多一个前台进程组，但可多个后台进程组
+        × 前台进程组：
+            进程的输入定向至标准输入，即可通过终端向进程输入。
+            eg:
+              gnome-termnal
+                         |___bash:会话leader;bash自己单独一个进程组
+                                |___ps|less：前台进程组，leader是ps进程
+            
+        × 后台进程：
+            与前台进程向反，后台进程不可通过终端输入，但后台默认是输出重定向至终端。
+        × 作业控制：
+            当前bash下的所有作业的启动、停止、终止、恢复、查看等控制
+            
+            a.作业查看：
+              job:
+              列出当前shell(往往是bash)下的所有作业(该shell内执行的进程组
+              包括了前台和后台进程(组))的num、stopped|running
+              -l：额外列出对应的进程组内容和pid
+              -r：只列出running的工作
+              -s：只列出stoped的工作
+            b.作业启动：
+              命令 &：
+                将终端将要执行的命令放入后台执行(running)，即作为后台进程
+              nohup 命令 &：
+                nohup使得进程忽略sighup信号，进而不因接收到sighub信号而
+                终止。nuhup 使得进程默认输出至nohup.out文件，但输入仍默认
+                是重定向至终端标准输入.
+                而&就可以使得进程放入后台执行。
+
+            c.作业停止：
+              ctrl +z:
+               将终端正在执行的进程(前台进程)放入后台暂停（stopped）
+            d.作业恢复：
+              fg %num：
+                将后台停止进程放在终端，即作为前台进程运行
+              bg %num 
+                将后台暂停进程放在后台运行。 
+  > 信号:
+     man 7 signal:查看信号的定义，动作，注释
+     kill：传递信号给进程或进程组
+      其中信号可以是任意信号:包括系统信号和自定义信号。
+      进程和进程组为当前用户的任意进程和进程组，超级用户则没有这个限制。
+      格式: 
+      kill -num pid 或kill -SIGNAME pid 
+      eg：
+        kill -USER1 1107对应信号SIGUSER1.
+        kill  pid "传递15,SIGTERM(正常终止信号)
+        kill -2 pid "传递2,SIGINT.等价在终端键入ctrl+c(中断终止)
+        kill  -9 pid "9,SIGKILL,强制终止信号，不可忽略或捕捉.进程强制终止  
+                
+                
+            
+
+    >服务：
+        服务是个守护进程，后台持续运行。某些服务作为网络服务
+        如mysql数据库的服务端进程名为mysqld，服务名为mysql。
+        × service:
+            service 服务名 start ：运行服务
+            service 服务名 stop  ：停止服务
+            service 服务名 status：查看该服务的运行状态。
+            service --status-all:查看所有服务，+正在运行，-停止运行  
+        eg:
+            service mysql status    "mysql服务器端mysqld提供的mysql服务
+        × 测试远程服务是否可用：
+          ping ip/域名 "测试远程服务器ip可达。当然远端的防火墙可禁用ping
+          
+          netstat -anp|grep "22"  "查看本地ssh服务套接字状态，listening监听
+          service ssh status      "查询ssh服务状态。同上
+          nc -zvn ip 22           "查远端ip和port的tcp可达性
+          ufw status                "查看防火墙状态信息，包括port，ip、协议
+          ufw allow 22              "不禁用22端口 
+    > 端口：
+        × 查看端口占用情况：
+          端口被某一进程使用，就是占用，那么使用同一协议(tcp|udp)的其他进
+          程不能再使用该端口。
+          主机的tcp和udp协议可使用同一端口，但同一协议内不能使用同一端口
+            a. netstat -anp |grep -w 'port' 
+            b. lsof -nP -i:22   "显示占用端口22的网络进程pid，ip，端口信息
+        × 端口扫描:即查看端口是否被禁用:
+          端口禁用:端口被内置或外部防火墙禁用，那么主机不能远程反问服
+          务器的该端口服务
+            a.
+            b.ssh/telnet ip 22 "利用ssh|telnet测试tcp-port端口是否可用
+            "z-v-n:连接后立即断开-详细输出-不反向解析ip成
+            "域名输出.默认是扫描tcp，使用-u扫描udp
+            c.nc -zvn ip 21-23
+        × 关闭端口：
+            a. kill -9 pidofport
+            b. service  stop servicenameofport
+
+
+
+#ubuntu防火墙：ubuntu提供更为简便的防火墙工具ufw
+   ufw：    
+      ufw status ：显示当前允许的端口信息，如ssh 22,telnet 23端口。
+      ufw 端口 allow：允许端口
+
+#网络：网络连接、网络接口、路由信息、masquerade 连接、多播成员、
+       各协议统计信息的查看、修改、启动关闭。
+
+   > netstat：
+     查看网络连接、网络接口、路由信息、masquerade 连接、多播成员、
+     各协议统计信息。
+         选项：一般由第一个选项决定输出的信息类别。
+            默认：是输出系统支持的所有协议族的除正在监听外所有的套接字
+                （网络连接）信息。
+              -i: 输出网络接口信息。即所有活跃的网卡信息，如：
+                  eth0 以太网接口 wlan0 无线网卡 lo 本地回环网卡 
+                  ens33系统自定义的网卡名，可以自行修改网络配置文件。
+              -r：输出路由信息。
+              -s：当前tcp/ip协议族中各协议，如icmp、ip、tcp、udp等协议的
+                  统计信息。
+              
+              -a (all)显示所有选项，默认不显示LISTEN相关
+              -t (tcp)仅显示tcp相关选项
+              -u (udp)仅显示udp相关选项
+              -x (unix)仅显示unix（本地）连接的相关信息
+              -p 显示套接字对应的pid/程序名
+              -n 拒绝显示别名，能显示数字的全部转化成数字。
+              -l 仅列出有在 Listen (监听) 的服務状态
+              -c N 每隔N秒执行当前netstat命令，刷新显示的信息
+              -e 扩展显示信息，如netstat -ie 显示接口配置信息。
+              --verbose 显示详细信息，如netstat --verbose 显示未支持的协议族信息。
+              ---------
+        eg:
+         netstat -tanp |grep -w "3306 "显示3306服务进程的tcp套接字状态
+
+         netstat -tuln|grep -E":(80|22|23|24)"
+
+         "mysql数据库服务端mysqld的套接字(应该是使用3306的tcp套接字)
+         "local   add 默认是：127.0.0.1:3306(本地回环地址,仅开启本地服务)
+         "foreign add 默认是：0.0.0.0：*    (任意主机的任意端口)
+          netstat -tap |grep "mysqld"
+     > ifconfig:查看、修改网络接口信息.如内网ip、mac、网关、子网掩码、mtu等
+     > curl：
+        curl 下载网址   "下载源码/压缩包
+        curl ifconfig.me    "打印本机外网ip
+    > route :查看本机路由表
+    > traceroute: 正向路由跟踪
+    > tcpdump: 查看tcp/udp/ip/icmp等协议数据报
+
+
+
+#显示：
+    > echo：
+           默认将标准输入输至标准输出，而标准输入、输出、错误默认重定向至
+           终端。
+           echo [-ne] "字符串" ”最好用双引号括住字符串
+           -n:本次echo输出不换行的。
+           -e：对一些特殊字符\字符.如输出', "需\',\"
+          × echo后的字符串建议使用双引号或单引号括住，根据特性选择。见"/'
+          × echo默认不带-e，使用转移字符时，一定要加-e
+            eg:
+                echo -e "nihao\nchina"  "换行
+                echo  "nihao\nchina"  "不换行，输出字符串\n
+                结果：你好
+                      china
+           eg:
+            1.echo $PATH `date`
+                输出PATH变量中的值以及date命令的输出。
+                等价 "$PATH `date` 。因为echo 默认将
+                输出内容认为是"输出内容"。见字符串" ' `区别
+
+            2.echo this is a test " 输出字符串
+
+            3.echo 'wo ai ni'> test.txt "echo输出wo ai ni覆盖test.txt
+
+            4.echo "export TEST=\"WO SHI CESHI\" ">> test.txt "echo输出
+                export TEST="WO SHI CESHI"换行追加
+            5.echo export TEST=\"WO SHI CESHI\"$PATH`date` "echo输出
+                export TEST="WO SHI CESHI"PATH变量值日期值
+            6.echo -n woshi;echo zitengfei ”woshi不换行 输出woshizitengfei
+    >screen：
+        即一个screen session 可包含多个window
+        × screen会话管理：
+            screen -ls          "查看用户的所有screen会话信息(名字，状态)
+            screen -S s0         "新建一个名为s0(取代tty.host)的screen会话,并进入该会话
+            screen -d pidnum    "将screen会话[pidnum]detach，即分离该会话从其父进程(终端)
+                                "因此，该会话会在后台持续运行
+            screen -r pidnum    "恢复detached的进程，即接入父进程终端，因此会终端显示该
+                                "会话
+            screen -d -r pidnum "在屏幕显示该screen会话
+            kill -2|9 pidnum    "直接结束screen会话进程。若screen会话内所有窗口都退出
+                                "则screen会话进程也会结束
+        × 屏幕分割：以下为screen命令的常用使用流程
+            sreen -S s0 "新建一个名为s0(取代tty.host)的screen会话,并进入该会话
+            
+            ctr-a c     "在当前screen会话中新建窗口(若不分割出区域，那同一screen的多个窗口
+                        "只能轮流独占该screen)
+            ctr-a w     "查看当前screen会话内的所有窗口名(num -|* 窗口名)*表示当前，
+                        "-表示上一个窗口
+            ctrl-a n|p  "在当前screen内上一个|下一个切换窗口
+            ctrl-a a    "循环切换窗口，类上
+
+            ctrl-a ||S  "在当前screen内水平|垂直分隔出一个区域(即可使得同一screen会话的多个窗l
+                        "口占用该screen的不同区域)
+            ctrl-a tab  "同一个screen内的分隔区域之间切换(可使用ctrl-a n将本screen会话内的
+                        "某个窗口切换到当前区域显示)
+            ctrl-a X    "取消当前区域的分隔
+            ctrl-a Q    "取消当前screen会话内的除当前区域外其他所有区域分隔
+            ctrl-a k    "终止当前窗口==等价于在该窗口输入exit退出
+            ctrl-a z    "退出到该screen会话创建之前的bash终端
+                        "并且该screen会话转为detach状态(screen会话放入后台运行)
+                        "此时可用fg命令恢复该会话
+            screen -x   "恢复detach的screen
+        
+    ×会话共享：
+        若多人以相同用户username远程登录服务器，那么他们可以远程实时共享
+        user用户创建的screen会话及其会话的所有窗口。
+        screen -x   "A远程登录后使用该命令打开并共享B正在attach的screen会话
+    ×screen外发送命令到该screen会话
+        screen -S S0 -X screen ping www.baidu.com   "在以存在的S0会话内创建新窗口并执行命令
+    
+#终端复用：
+  > tmux 终端复用:
+    × tmux介绍：
+      1.基于c-s架构，远程连接时，即便突然断网或客户机注销，服务端的tmux会话        也不会丢失;
+      2.可以有多个session(会话)，每个会话可以有多个窗口(window),
+        但只显示一个窗口;每个窗口可以有多个窗格(pane).
+        tmux窗口左下角0:bash*-1:bash-,可知当前正在当前tmux会话的窗口0中。
+
+      3.tmux会话占用各自bash终端tty设备，每个会话内共用多少个
+        窗格就用多少个bash终端(tty查看当前窗格bash终端号)。
+      4.detach tmux会话，即暂时放入后台暂停，需要用的时候attach就行了
+           
+    × 使用步骤：
+      
+      tmux "创建tmux会话，并进入这个会话
+      ctrl+B C "为当前tmux会话创建一个新窗口
+      ctrl+B N或P "当前tmux会话内切换窗口
+      ctrl+B shift "/%  "为当前会话的当前窗口垂直/水平分隔出一个新窗口
+      ctrl+B X          "删除该窗格
+      ctrl+B q 数字           "切换指定编号的窗格
+      ctrl+B  up/dn/rt/lt     "上下左右切换窗口
+      ctrl+B O                "交换窗格位置
+      ctrl+B 长按上下左右键   "调整当前窗格边界
+      ctrl+B [          "当前窗格进入文本模式，方便查找，替换
+                        "上下左右键 ”可以上下滚动了
+      q                 "退出上述所说的文本模式。
+      ctrl+shift+n      "新建一个与当前bash终端相同当前路径的bash终端
+      -------
+      tmux new -s name  "创建一个新的有名tmux会话
+      tmux ls "list-session.查看tmux信所有会话的编号,窗口数,创建时间,
+              "attached是否等会话信息
+      tmux detach "ctrl+B D.退出会话（暂停放置后台,即便远程终端关闭也没事)
+      tmux attach [-t num/name]"attach a.恢复进入[指定]tmux会话
+      tmux kill-session -t S1 "终止会话。指定会话名或编号
+      tmux attach -t sess1 "同一用户身份的人可进入该用户已建立的会话。共享
+
+      
+
+
+#文本搜索：
+    grep：查找满足条件的行。默认是区分大小的不匹配整个单词的不显示行号
+          的查找非二进制文
+        格式：
+            [|] grep [选项] pattern [参数]
+            
+            选项：
+                -a: 不忽略二进制文件。出现"匹配到二进制文件"，可加-a
+                -w：只匹配整个单词，而单词往往以空格，;等隔开   
+                -i：不区分大小写<默认是区分大小写>
+                -n：显示行号：展开
+                -r: 递归所有文件，但不包括符号链接文件
+                -R：递归所有文件
+                -B：显示查找结果的前N行，如 -B4
+                -A：显示查找结果的后 N行，如 -A3.
+                -v: 不选中满足条件的行.见 鸟哥linux p351
+                -e: 启用支持多个匹配样式(“或匹配”)，grep -e "aa" -e "bb"
+                -E: 启用支持扩展正则表达式
+    eg:
+        grep -r "项目结构" ~/progam "递归从该目录下的所有文件搜索匹配
+        ps -eo pid,ppid,pgrp,sid,comm,tty|grep -e "PID" -e "bash" "多模式匹配
+#文本排序:
+    sort:
+        对stdin|或文件的内容按字段进行行排序，sort默认是以TAB键分隔每行
+        为多个字段，取每行的第一个字段进行字符形态进行升序比较,其中
+        a--->z;0--->9;
+        -t: 指定分隔符
+        -k: 指定分隔后的第几字段最为比较
+        -r: 倒序
+        -f：忽略字母大小写
+        -b: 忽略最前面的空格
+        -n：视为数字
+        -M: 视为月份，JAN，DEC
+        -u：剔除重复行，即unique
+        eg:
+        "查看本机物理cpu id并排序去重。显然对于单cpu，该id号有且只有一行为0
+        cat  /proc/cpuinfo | grep "physical id" |sort |uniq 
+        " 登录信息-以空格分隔字段取第一各字段-排序
+        last | cut -d ' ' -f1 | sort
+#文本编辑:
+    sed:
+    awk:
+
+
+----------------shell脚本--------------
+#一些概念:
+    × shell脚本的执行需要shell解释器进行逐条语句解释运行，
+      而bash就是其中的一种解释器。
+      在此，以下一般默认bash就是shell，shell就是bash
+    × 命令行终端就是可视化的bash进程。
+      在此，可认为一个终端窗口对应的就是一个bash进程
+      而一个bash进程不一定是可见的终端(这个在shell脚本执行方式中会提到)
+     ————bash(终端)
+     |      \__子进程bash
+     |
+     ————bash(终端)
+     |
+     ————bash(终端)
+#shell脚本执行方式：
+    × source ./test.sh :等价于. ./test.sh
+         即直接使用当前bash去读取并解释执行该shell脚本
+         1.因此，不需要该文件的执行权限
+         2.不产生子bash进程，该shell脚本可使用该bash内任何变量.
+
+    × .test.sh : fork+execlp+bash ./test.sh
+        即当前系统的可执行文件去执行，当遇到#!/usr/bin/bash
+        当前巴山则会根据该语句指定的shell解释器bash，生成一个shell
+        子进去执行该shell脚本，
+        1.因此，不但需要用户对该shell脚本用于执行权限，而且实际调用的新
+          bash解释器是当前bash进程(即命令行终端进程)的子进程。
+        2.因此，新bash进程继承了当前bash进程中的系统变量
+          (包括export TEST1=001 形式定义的临时的系统变量)
+          而(形式如TEST2=002)临时非系统变量不被继承
+    × bash ./test.sh：
+        基本同上，唯一区别就是不要该shell脚本的执行权限，因为该方式
+        是在读该文件。
+    × exec ./test.sh：
+        即将当前代码去取代当前进程的代码段不产生新进程。
+        1.不要该文件的执行权限
+        2.当前bash进程的系统环境变量(包括export定义的用户定义系统环境变量)都继承
+> shell脚本调用另一个shell脚本
+  × fork：即上面的./test.sh
+  × exec：与上节exec一样
+  × source：与上节source一样
+#特殊符号：
+    $:双引号括住表示取$运算值作为整体，单引号括住取$在内的字面值。
+        × $PATH:修饰变量名，取变量值。
+          
+            eg:
+                echo $PATH          "输出PATH变量的值
+                echo '$PATH'        "输出字面字符串$PATH
+                test="ni hao"
+                [ $test == "ni hao" ]   "报错，ni hao=="ni hao"
+                [ "$test" == "ni hao" ] "正确，"ni hao"=="ni hao"
+        × $(命令)：将命令结果作为临时变量，取该临时变量的值
+            eg:
+               var= $(netstat -tuln |grep ":80")    "自定义变量赋值
+               for filename in $(ls ./) "命令结果作为临时变量,取临时变量的值
+        × $((运算)):
+            eg：
+                var=$((13%3))           "var=1
+                var=$(($var1%$var2))    "同上
+    ():括住命令结果，vim $(find ./ -name "makefile"|grep "^./e"|cut -c 3-)
+    {}:括住含变量名的表达式，
+        eg:
+            filename=${file} "取值时最好使用{}括住变量
+            filename=${filename:-"默认文件名"} 
+    ``  :修饰shell 命令，取命令的输出,作用与$(命令)一样.
+        eg:
+            for filename in `ls ${dirname}` "等价于in $(ls ${dirname})
+            echo `date` "输出日期
+    ' ' :单引号，'字符串'。直接按字面输出$变量/`命令`/转义字符
+        eg:
+            echo '`date`'   "输出`date`字符串
+            echo '$PATH'    "输出$PATH字符串
+            echo '\n'       "输出\n字符串
+            echo \n         "输出n字符
+            echo -e '\n'    "输出换行等价于echo -e "\n"
+    " " :双引号，"符串"。在''基础上可输出$变量、``命令、\转义字符。
+        eg:
+         1.无修饰的字符串。不能输出空格、字面输出$变量、``命令、\转移字符
+            TEST=hello world " TEST变量值为hello。空格后的world被认为
+                                是另一个命令
+            echo $TEST "输出hello 。
+            --
+         2.''单引号修饰字符串。按字面输出字符串。
+            TEST='this is my name : $NAME 。today is `date`'
+            echo TEST 
+                "输出 this is this is my name : $NAME 。today is `date`'
+            上述两句等价于，echo 'this is my name : $NAME 。today is `date`'
+         3." "双引号修饰字符串。在''基础上可输出$变量、``命令、\转义字符。
+            TEST="this is my name : $NAME 。today is `date`"
+            echo TEST 
+                " 输出 this is this is my name : ×××× 。today is ××××
+            上述两句等价于，echo this is my name : $NAME 。today is `date`
+            echo默认给无修饰的字符串加双引号修饰。
+
+#变量：shell打开子进程shell则会继承当前shell的环境变量;
+        可source ~/.bashrc 可是变量立即生效;当前shell变量修改值不会作用
+        于子shell进程。：
+    a.根据变量的生存周期：临时变量和永久变量
+        临时变量：只存在于当前bash或子bash且重启无效
+            test = 1 "用户定义局部变量--子bash不继承
+            export temenv "用户定义(全局)系统环境变量--子bash进程
+        
+        永久变量：重启有效。因为是通过修改（系统或用户）配置文件而定义的变量
+            eg:修改系统或用户变量/命令别名bash配置文件
+                1.系统：作用所有用户，慎用。
+                    echo "export TEST=\"NIHAO\"">>/etc/profile 
+                    echo "export TEST=$TETS\"NIHAO\"">>/ets/profile
+                    source /etc/profile "不用重启生效
+                2.用户：作用当前用户，常用。
+                    echo "export TEST=\"NIHAO\"">>~/.bashrc
+                    echo "export TEST=$TETS\"NIHAO\"">>~/.bashrc
+                    souce ~/.bashrc
+    b.根据变量类型：
+        × 本地变量:
+          只有当前bash进程可使用，子bash进程不可继承
+          TEST="nihaoi"
+        × 局部变量:
+          当前作用域可使用
+          local TEST="你好"
+        
+        × 环境变量：
+          作用域为当前bash进程，子进程可以继承父bash进程的环境变量，
+          但是不能反过来影响。
+          a.直接export TEST="nihao"
+            ！新开的子进程shell能使用。
+          b.配置文件中export定义环境变量。
+            ！重启仍有效
+         × 特殊变量:系统已定义好(关于参数，返回值，PID等)的变量名
+           $# 获取当前shell命令行中参数的总个数
+           $* 获取当前shell的所有参数 “$1 $2 $3 …，受IFS控制
+           $@ 这个程序的所有参数 “$1″ “$2″ “$3″ “…”，不受IFS控制
+           $0 获取当前执行的shell脚本的文件名
+           $n 获取当前执行的shell脚本的第n个参数值，n=1..9
+           $$ 获取当前进程PID
+           $! 获取最后返回的后台进程的PID
+           $? 最近执行过命令的通过exit系统调用返回的终止码，0/1-成功/失败
+           $- 获取set设置的(bash相关)参数
+           如: ./test.sh 参数1 参数2 参数3
+
+    变量查看：
+        echo ${变量名} :显示指定变量的值
+        env：只显示当前shell的所有环境变量
+        set：当前shell所有变量。即也包括TEST ="nihao" 这样的本地变量
+        export -p:当前shell环境变量
+    变量值修改：
+        TEST="newvalue"   
+    变量删除：
+        unset TEST
+                    
+#shell变量输入、声明
+    >shell变量的输入：即键盘输入变量的值，赋予给该变量
+        × read [-pt] ["提示符"]varname 默认一直等待输入字符串
+            -p：显示提示符
+            -t：等待输入字符串的等待时间。
+        × $+符号：
+            $#:参数个数
+            $@：获取所有参数，得到参数字符串"arg1 arg2 agr3..."
+            $0: 获取shell脚本名
+            $1: 获取第一个参数
+            eg:
+                test.sh zitf 23 "$#为2,$@为"zitf 23",$0为"test.sh",$1为"zitf"
+                > recurdir ./     "shell脚本自定义函数调用 $1为./
+
+    >shell变量分析：
+            var=${var:-"默认值"} "var为空或不存在，则取 默认值，否则取var
+
+#正则表达式：
+    × 正则表达式是以行为单位的处理字符串的一种表示方式。
+    × 正则表达式的处理结果与语系环境相关：
+        在此设export LANG=C(见鸟哥linux p349)
+    × 只有支持正则表达式(一般是默认支持基础正则表达式)的命令才可使用正则表达     
+        如：grep/sed/find/awk
+    × 通配符与正则表达式不同，有些通配符在正则表达式的含义不一样
+    × 正则表达式分为基础正则表达式和扩展正则表达式
+      正则表达式只提供正则表达式特殊字符，具体的使用结果和扩展还与具体的命令相关
+    
+    > 基础正则表达式：
+        × 提供以单个字符为单位的定位、重复、选取、转义字符等特殊字符
+        × 支持正则表达式的命令默认支持基础正则表达式。
+        × 规则：
+            ^:行首
+            $:行末
+            .:一个任意字符。.* o到无穷个任意字符，g.*l:gl,gol,goal,google,go  onl
+            *:重复前一个字符0到无穷次。goo*:go,goo,gooo等
+            \:输出特殊字符。echo \'\' 输出 :‘’。
+    > 扩展正则表达式：
+      × 规则：
+        | :多模式或。
+
+
+
+        \:转义字符
+            eg：
+                result=$(echo ${filename}|grep "\.cpp")
+            ×[[]]一般用于字符串同正则表达式比较
+            ×多重条件格式同上
+            ×括住的正则表达式应尽可能不用双引号或单引号括住(小数点必须在此种
+             方式下\.输出小数点)
+        × {} :用于比较运算
+#shell脚本控制结构：
+    >if:
+        if []或[[]]或{};then
+
+            命令或语句
+        elif []或[[]];then
+            命令或语句
+        else
+            命令或语句
+
+        fi
+    >for:
+        for var in conditionset "条件集合本质是一个空格隔开的字符串，可以是${变量}
+        或                      "/$(命令)/cond1 cond2
+        for (( 初始值; 条件; 执行步长)) "数值处理
+        do
+
+        命令或语句
+        done
+        eg: 
+            × for filename in $(ls "${dirname}") "或in ./cppprogram ./cprogram
+              do
+                echo ${filename}
+              done
+            × for num in $(seq 1 100) "1 2 3 4 ....100序列作为条件集合
+
+            × for (( i=1; i<=$num;i=i+1))
+              do
+               s= $((${i}+${s}))
+              done
+              echo $s
+
+# c语言-shell脚本/命令相互调用：
+  > c调用shell命令/脚本：
+    三者都是基于fork-exec，都是调用bash -c 命令或shell脚本 参数
+    × system:基于fork+exec+waitpid
+    system("./sshlogin.sh")
+    system("ls -l ./")
+    × popen:fork+pipe+exec+waitpid
+      eg:
+       "fd[1]--|-->dup2(fd[0],STDIN_FILENO)实现父的输出流向至子的输入
+        fp = popen("./test.ch","w"); "返回值FILE* fp连接shell脚本的标准输入
+        pclose(fp);//等待脚本进程结束;返回其终止码;关闭标准io流
+    × exec:用新程序替换当前进程的内存空间(text,data,bbs,stack,heap)
+      eg:  
+      execl("./test.sh","test.sh","myarg1",(char*)0,)
+  > shell 脚本调用c
+    shell脚本能够直接调用二进制可执行文件，就像调用shell命令一样，
+    shell命令本身就是c语言写的可执行文件
+  
+
+
+
+
+
+
+
+
+--------------linux 编程开发-------------
+#查找应包含的头文件
+#列出程序动态库依赖关系。
+     语法格式：
+        ldd 可执行文件名或命令
+     输出格式：
+        第一列：程序所需依赖动态库名
+        第二列: 系统实际提供依赖动态的库路径
+        第三列：库加载的mmap段进程地址
+    !对比第一列和第二列，我们可以分析程序需要依赖的库和系统实际提供的，
+     是否相匹配
+    !通过观察第三列，我们可以知道在当前的库中的符号在对应的进程的地址空间
+     中的开始位置符号表信息。
+
+#列出程序的中所有符号。
+    语法格式：
+        nm [-C] 可执行文件或目标文件或命令 
+    输出格式：
+        第一列：当前符号的地址
+        第二列：当前符号的类型
+        第三列：当前符号的名称<编译器修饰后的符号or(-C)未修饰的符号>
+    ！像ZN4Test5HelloEv这样的符号，加上-C选项，就可以把这些难以识别的符号，
+      转换成便于我们阅读的符号TestHello()。这个主要是c++中的mangle机制所导致
+      的，加上-C就是指定列出的符号是demangle了的。
+    ！判断指定程序中有没有定义指定的符号 (如：nm -C proc | grep symbol)
+      解决程序编译时undefined reference的错误，以及mutiple definition的错误
+    ！查看某个符号的地址，以及在进程空间的大概位置（bss, data, text区，具
+      体可以通过第二列的类型来判断） 
+
+# objdump:输出可执行文件或目标文件的反汇编或符号表
+    objdump [-tS] objname/exename
+    -x:显示虚拟内存地址和符号表
+    -t:显示文件的符号表。
+       查看c/c++混合编译中c和c++编译区别：见extern 关键字
+       { 
+       //int test(int i ,int j)在test.c定义-test.h声明，main.cpp调用test.h
+            gcc -c test.c -o test.o
+            objdump -t test.o
+             ==> 查看到test符号-表示test函数定义
+
+            g++ -c main.cpp -o main.o
+             ==> 查看到_Z10ThisIsTestii符号-表示test函数声明
+       }
+    -d:显示二进制机器码的对应汇编代码
+    -S:同时显示其汇编代码和源码(即尽可能反汇编出源码)。gcc/g++指定-g时，
+       -S效果更好。
+    eg:
+        objdump -f test "等价与readelf -h test 查看elf header
+        objdump -d 目标文件.o或可执行文件 "反编译
+        objdump -s -j .txt 目标文件或可执行文件 "-s完整显示-j指定节(section)的信息
+
+---链接/调试:内存空间
+#readelf：
+  查看elf文件的符号、符号相对地址、内存布局(显然不显示stack段)。
+  全局符号：非static的函数名、全局变量名的定义符号---本模块定义其他模块可以引用
+  局部符号：static的函数、全局变量的定义符号--本模块的定义只能本模块引用
+  外部符号：本模块的函数、变量的引用符号---本模块的引用其他模块的定义
+  ELF文件分为以下四类：
+  可重定位文件:.o目标文件
+  共享目标文件:如.so,.a 库文件;动态链接生成的可执行文件
+  可执行文件:
+     静态链接生成的可执行文件(g++ -static main.cpp -o test全部启用静态库;file test查看test是
+     exe文件而不是shared obj 文件)
+  core dump文件：运行时错误生成程序存储映像文件(寄存器、内存布局)
+  elf文件：
+   elf header:
+   ----section(又称段或节)--
+  .text：
+    已编译程序的机器代码。
+  .rodata：
+    只读数据，如const char×p="字符串"str("strig")、printf语句中的格式串
+    和开关语句的跳转表。
+  .data：
+    已初始化的全局和静态C变量。局部变量运行时被保存在栈中。
+  .bss：
+    未初始化的全局和静态C变量，以及所有被初始化为0的全局或静态变量，
+    目标文件中这个节不占实际的空间。
+  .symtab：
+    符号表，存放在程序中定义和引用的函数和全局变量的信息。
+  .rel.text：
+    一个位置的列表，链接器把这个目标文件和其他目标文件组合时需要修改这些位置 。
+    任何调用外部函数或者引用全局变量的指令都需修改。
+  .rel.dat:
+   引用或定义的所有全局变量的重定位信息。
+   （只有可重定位目标文件才有，可执行目标文件没有）节头部表中有三个特殊的伪节在
+    节头部表中是没有条目的：ABS，UNDEF，COMMON。
+    区分COMMON和.bss：未初始化的全局变量被分配在COMMON中，未初始化的静态变量，
+    以及初始化为0的全局或静态变量被分配在.bss中。
+   .data.rel.ro:
+    存放typeinfo* _ZTI4Base(c++filt _ZTI4Base可以解析这个符号)
+    ----
+  section header table:节头表
+  
+  eg:
+  > readefl -h test "查看.elfheader:elf64、小端序、节数）
+  > readelf -S test "查看elf文件的.sectionheadertab节头表:节名name-节标识ndx--地址范围
+  > readelf -s test "查看.symtab符号表(ndx:section标识)
+  > readelf -p .rodata test |grep "你好" "在test可执行文件中的指定(-p).rodata段(节)中查字符串常量
+  > readelf -r test "查看test可执行文件的可重定位信息。
+# cat /proc/pid/maps:查看指定进程的内存映像
+
+# strace:跟踪、统计信号
+  使用strace 我们可以跟踪查看正在运行进程或是新建进程的所用到的系统调用和
+  信号。
+  > 进程系统调用跟踪
+    " execve()--->exit_group()，-T显示每次系统调用的耗时
+    strace  -T ~/program/book实例/apueegs/1-4mycat/test <infile >outfile
+  > 进程系统调用统计：
+    " -c查看各个系统调用的统计次数，消耗时间。-o strace追踪输出指定文件
+    strace -c -o  straceoutfile ./test "-o 等价2 > outfile 
+  > 查看和信号相关的系统调用
+    strace -e trace=signal -p 12182 
+  > 追踪系统调用execve函数且(-f)展开fork;查看system("g-t -x ./TermTest")
+    strace -f -e strace=execve .控制台测试/consolerun ./TermTest "
+
+
+            

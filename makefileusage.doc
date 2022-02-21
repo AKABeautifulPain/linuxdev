@@ -1,0 +1,48 @@
+/*
+   makefile编写
+ */
+
+#makefile基本原理：
+	c/c+编译基本原理：
+		1.ccp：预处理，替换宏定义、头文件，即.c ->.i
+     		eg:ccp test.c -o  test.i 等价于 gcc -E test.c -o test.i
+		2.cc1：编译，检查语法错误，将代码编译为汇编文件，即.i->.s
+     		eg:cc1 test.i -o test.s 等价于 gcc -S test.c -o test.s
+		3.as:汇编，将汇编文件转化成二进制机器代码，即.s ->.o
+     		eg:as test.s -o test.o 等价于 gcc -c test.c -o test.o
+		4.ld：连接，将目标文件.o、静态库.a,链接成可执行文件并指定动态库
+			名、路径待运行时连接。
+   			 eg：ld test.o -lapue.a -o test 等价于上述的gcc -o一步生成
+			 可执行文件.
+	
+	makefile原理：将上述四步，视为两步——编译和连接，makefile主要负责这
+				  两步，以及提供make lable执行程序打包、备份、清除中间
+				  文件等功能（即执行shell 命令）
+				其中：
+					编译：检查语法正确性、函数和变量声明是否（如是否包含
+					      相关头文件）、生成objective。
+					连接：链接包含关联函数和全局变量定义的objectfile
+						  （当然也包括链接库文件）、生成可执行文件。
+				总之，makefile 主要是分析依赖关系：生成可执行文件需要
+				那些object file和库文件;先编译哪些源文件、后编译哪些、
+				需重新编译哪些。
+
+	makefile编写基本格式：
+		格式：
+			target：prerequisites
+				command
+			target：可以是可执行文件、objectfile、lable
+			prerequisites：有序依赖文件，如objectfile、.cpp/c 、.h
+			command:shell任意命令、程序命令。
+
+	makefile基本工作过程：
+			1.当前目前执行make：默认是make 当前目录的 makefile或Makefile
+				文件
+			2.默认将第一个target作为最终目标：所以应将第一个target写位可
+				执行文件。以此，分析该可执行文件的依赖的objfile，有序去
+				寻找并执行对应的target
+			3.手动执行lable类型的target：因为可执行target中，不依赖
+				lable，因此make不会自动去寻找执行该lable。
+				
+
+		

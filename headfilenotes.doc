@@ -1,0 +1,44 @@
+----linux c 系统标准头文件----
+linuc 系统头文件：
+c 标准头文件：
+-----------------------------
+<dirent.h>:
+    系统头文件，包含了
+    目录dir的操作函数原型：opendir（），readdir（）
+    dirent结构体定义：即目录（文件）结构体，里面包含了其名称成员。
+
+<unistd.h>:
+    系统头文件, 符合posix标准，包含了
+    系统调用原型：
+        文件io：read(),write()等
+        进程管理:fork(),excu(),getpid()等
+    定义常量:STDIN_FILENO,STDOUT_FIILENO,STDERR_FILENO
+
+<stdio.h>:
+    c标准头文件，包含了
+    标准函数原型：
+        标准io：fputc(),printf(),fread(),fwrite()等
+        出错消息函数：perror()
+<errno.h>:系统头文件，包含
+    全局变量：errno描述系统调用或标准函数调用的等错误,包括：
+
+<strings.h>:berkeley函数
+    字节操作函数：bzero(),bcopy(),bcmp(),
+ 
+<string.h>:c标准函数,ansi c。    
+    字节操作函数：memeset()、mencpy()、memcmp()、memmove()
+    
+    strerro()
+
+ -----<sys/***.h>:-----------------
+<sys/socket.h>:套接字相关结构体、操作函数、常量宏定义,自定义数据类型
+    套接字相关结构体：
+        (SA)socaddr：通用套接字地址结构
+    套接字操作函数：对应的包裹函数在lib/wrapsock.c中
+        socket();
+        connect();
+        bind();
+        listen():
+        accept():
+-------
+

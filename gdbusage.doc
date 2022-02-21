@@ -1,0 +1,370 @@
+-------------linux c/c++ 调试：GDB 使用方法-----------
+一.开启gdb：
+   1.gcc/g++ 编译源文件时加入-g命令，才可开启生成含调试信息的可执行文件。
+           如 g++ -g main.cpp func0.cpp -o test
+   2.开启gdb：gdb 可执行文件或
+         gdb -q --args test -d "-q不显示gdb版本等信息;--args 带参数-d调试
+
+          gdb "进入gdb 
+          (gdb) file test "gdb内加载要调试的可执行的文件
+二.gdb 命令：gdb内部执行
+  > 帮助：
+    help kill "查看kill命令的作用
+  > gdb配置文档：
+    .gdbinit "gdb的配置初始化文件
+    ~/.gdbinit "默认位置，如果没有，则在此新建.gdbinit
+ 
+  > gdb启动：
+    gdb -q "gdb启动，-q不输出gdb版权信息
+    "g++ -g main.cpp -o test "-g输出更多调试信息，如符号表信息，以便gdb调试
+    gdb ./charsever "gdb启动并加载可执行文件
+    gdb ./core文件  "gdb可以调试可执行文件运行异常生成的core文件
+    gdb pid         "gdb可调试正在运行的进程。
+  > gdb配置和自动执行gdb命令脚本
+    " 往往没有必须去修改.gdbiniit;在当前目录下建立针对化的gdb命令脚本更好
+    " 我们可以在auto-debug.gdb脚本去执行set、shell、b、n等待一系列gdb命令
+    info auto-load "查看gdbinit,gdb命令，python脚本,libthread-db自动加载信息
+    gdb -q -x auto-debug.gdb --args chatserver -d"-x加载当前目录gdb命令脚本
+  > gdb启动后再加载：
+    file ./chatsever "加载带-g调试信息的可执行文件
+    attach pid       "调试正在运行的进程
+    source auto-debug.gdb "加载gdb命令脚本，等价于gdb -x auto-debug.gdb
+  > gdb日志输出：gdb日志是指gdb的命令执行结果等信息
+    "gdb默认只输出至终端。
+    show logging "loggig日志输出设置信息
+    "接下来设置将gdb执行命令的输出仅输出到日志文件，这样便于自动化执行gdb脚本
+    "当gdb命令输出仅输出到日志文件，就不会有诸如d删除断点的交互询问提示了，这很好。
+    set logging file mygdb.txt "设置日志文件名。默认是当前目录下的gdb.txt
+    set logging overwrite off  "不覆盖日志文件。默认
+    set logging redirect on  "仅输出至日志文件。默认off-输出至终端和日志文件
+    set logging on    "启用输出至日志文件。默认off。注意这步应在上述步骤之后进行。
+    set pagination off "启用不分页。默认on，这有时需要手动翻页，不利于自动化
+  > gdb退出：
+    quit "q.退出gdb。等价ctrl+D
+
+  > 显示源码：l 
+    list "默认显示当前停止位置的的后十行
+    set listsize mysize "设置默认显示行数为k，如set listsize 30.
+    show listsize "显示默认显示行数。
+    list <n>      "显示第n行附近的默认行
+    list <n>,<m>  "显示n至m行之间的行
+    list    ,<m>:当前行至m行之间的行
+    list + <n>  ：显示之后的行
+    list - <n>  ：显示之前的行
+    list <funcname>:显示函数名附近的行.filename指定作用的源文件，
+  > 设置参数、工作目录、环境变量：
+    set args -d "r前设置程序的参数
+    run -d      "也是设置参数
+    run >output.txt "程序的输出定向至output
+    show args   "查看设置的参数
+    cd ./       "切换工作目录
+    show cwd    "查看工作目录。若未设置，则默认cwd是gdb运行的工作某类
+    set environment LD_LIBRARY_PATH "设置
+    show environment PATH "显示所有或指定环境变量。
+  > gdb内执行shell命令：
+    shell ls "ls当前路径
+    !ls      "等价上面
+  > gdb内去构建项目:
+    shell g++ -g -fno-elide-constructors main.cpp -o test "g++编译程序(-fno.. 关闭rvo返回值优化)
+    make ”make当前路径下的Makefile文件去构建项目
+  > show/set: 显示/设置gdb调置选项的值
+    show inferior-tty  :显示gdb正在调试程序的输出终端
+    set inferior-tty /dev/pts/10    :设置调试程序的输出bash
+  > 断点设置/查看/取消 
+    break linenum " b . 当前文件的行断点
+    break filename:linenum  "指定文源文件的指定行断点
+    brak  filename:funcname "指定函数名
+    info b "所有断点信息：编号-类型-使能-地址-文件行
+    delete "d. 删除所有断点，可delete num 删除指定编号断点
+
+  > 观察点设置/查看/取消:
+    watch var或expr "设置一个观察点。一旦表达式值有变化时，马上暂停
+    rwatch var      "被读时，停住程序
+    awatch var      "值被读或被写时，停住程序
+    info watchpoints "列出当前设置的所有观察点  
+  > 捕获点设置/查看/取消：
+    catch event   "当event发生时，停住程序
+    tcatch event  "只设置一次捕捉点，当程序停住以后，应点被自动删除
+     event可以是下面的内容
+      throw	一个C++抛出的异常 (throw为关键字)
+      catch	一个C++捕捉到的异常 (catch为关键字) 
+ > 程序(进程)的运行/停止
+    start "运行至main函数停止
+    run   "r ,运行程序。
+    kill  "终止当前进程.为什么子进程kill没成为僵尸进程且设置断点并r不会停下
+    kill inferiorPID "kill -TERM PID 终止进程pid
+    info program     "程序状态:所在进程/运行状态/
+    bt               "函数堆栈/当前停在哪个函数调用中
+    continue         "c. 继续
+  > 调试：
+    next   "n. 单步但不进入函数。n 4 步进4条语句
+    step   "s. 单步且进入函数。
+    until  "u.直到循环结束/函数结束?再暂停 u 4 执行4行暂停
+    finish "fin.执行完所在函数体再暂停。
+    return "立即从所在函数返回再暂停(不执行完本函数体).return 7自指定返回
+  > 反向调试：
+    record "开始记录
+    set exec-direction backword "设置调试方向为后向,这样可直接n、s等后向调试
+    reverse-next
+    reverse-setp
+    reverse-nexti
+    reverse-stepi
+    reverse-continue
+    reverse-finish
+    reverse stop "记录结束
+  > 查看栈信息：
+    breaktrace "bt. 当前函数调用堆栈
+    frame num  "打印bt所显示的调用堆栈的第num栈
+    info frame "打印当前函数栈帧详细信息:oldrbp-var2-var1-arg2-arg1-oldrip;
+    info args  "打印当前栈帧的参数
+    info local "打印当前栈帧的局部变量
+    info reg   ".....寄存器
+  > info: i
+   reg、break、file、args、frame、functions
+    "elf文件的符号信息
+    ""info symbol Base::get "错误--"cannt reference virtual member function" 
+    info symbol main "打印符号main信息(全局变量、静态变量、函数名才是符号)
+    info proc        "当前进程信息：pid、cmdline、cwd
+  > show：
+    show paths  "可执行文件搜索目录
+    show environment "当前用户环境变量
+    show args      "当前可执行文件命令行参数
+  > print：              
+    对指定的变量或表达式进行格式化/控制化的打印/修改
+    print num "打印当前函数内局部变量num
+    print 'main.cpp'::num "打印指定源文件的全局变量num
+
+    print/x ptr "十六进制打印指针的值
+    pirnt/x $rip "十六进制打印rip寄存器的值-即打印下一条指令的地址
+    print/c i   "字符格式打印int i
+    print/t i   "二进制格式打印int i;但打印float f 的二进制却错误--用x/t &f
+
+    "打印字面值常量地址处存放的值
+    p *(0x555555557896) "等价p *(int*)0x55555555896
+    p *(&test)          "等价p *(test*)(&test)
+    p (char*)0x555555556029 "打印该地址值出存放的字符串
+    "打印类对象(的数据成员=值)：
+    set print pretty on "设置当打印结构体或类对象时以便于阅读方式打印
+    print d "此时打印Derived类对象d，显示很友好数据成员=值
+   
+    "打印类指针的静态类型和动态类型
+    ""假设父类Base至少有一个虚函数，Derived d;Base* bp = &d;
+    print bp  "此时打印bp指针的地址且显示是静态类型(Base*)
+    print *bp "此时打印bp指针的静态类型Base类对象.如果bp指向子类(Derived)对象,打印的是其父类部分。
+    set print obect on "默认off。on-按照bp指针的动态类型去进行打印
+    print bp  "此时打印bp指针的地址且显示是动态类型(Derived*)
+    print *bp "此时打印bp指针的动态类型对象.如果bp指向Derived类对象就打印Derived对象,否则打印Base
+
+    "打印字符指针(的值(是字符还是字符串？)和地址）
+    set print address on  "设置当打印字符指针时还显示其地址值(默认on)
+    print nameptr   "打印nameptr指向的字符串和地址。如果上面设置为off,则只打印字符串
+    print *nameptr  "第一个字符
+    print (void*)nameptr 第一个元素的地址-只有一个地址char*类型，p才打印其指向的字符串
+    "打印数组指定元素和范围元素。
+    set print arrary on   "以便于阅读格式打印数组变量myarray的元素值
+    print myarray         
+    set print arry-indexes on "打印数组时不但显示元素值还显示下标
+    print myarray             "
+    print myarray[1]@2        "打印从myarray[0]开始两个数组元素
+    "打印类对象的动态数组指针数据成员：
+    p test2.arrPtr@test2.size "打印类对象的动态指针数据成员的地址范围
+    p *test2.arrPtr@test2.size "打印类对象的动态指针数据成员的值范围
+    
+    ""打印(或类成员函数)函数地址
+    "p Base::virtualget() "错误--"cannt reference virtual member function" 
+    p b.virtualget() "打印类Base的成员函数virtualget()的函数地址
+    p d.virtualget() ".....Derive的成员函数virtualget()的函数地址
+    print num=5 "修改num值为5,接下来运行就用这个指定值
+    
+    "打印vptr的地址和vptr的值（虚表指针vptr的值就是是虚表数组的第一个元素的地址)
+    p base "打印基类的值。如果基类有虚函数，基类对象的就会有虚表指针vptr变量，且&vptr == &base
+    p &base "打印vptr的地址
+    p *(void**)(&base) "vptr的值，与p base 打印出来的一样
+    
+    "打印虚函数表的元素
+    p *bp "打印bp指向对象的值，可以看到虚函数表指针vptr
+    p base.get "查看函数地址和函数类型
+    p/a *(void**)0x5555555756c70@5 "根据vptr虚表指针打印虚函数表数组第一个至第五个元素(虚函数地址
+    x/5xg 0x55555555575670 "同上
+
+    "打印类对象的typeinfo指针、typeinfo::name指针（动态类型）
+     ""Base base;//Base类至少由一个虚函数，这样才会有虚表
+                                                    "typeinfo 对象"
+                            "_ZTI4Base = %rip+偏移" "存放在.data.rel.ro节(自然是%rip的偏移)"
+       低   "Base base"   -8|typeinfo*_ZTI4Base |-->|vptr            |
+        | | vptr虚表指针|-->| Base::vfun1()     | +8|const char* name|
+        | | int ibase   |   | Base::vfun2()     |
+       高      
+     p *(void**)&base "基类对象base的虚表指针vptr的值
+     p (long long)(*(void**)&base)-8 "指向typeinfo对象指针的地址(&_ZTI4Base)(typeinfo* _ZTI4Base)
+     p *(void**)((long long)(*(void**)&base) -8) "指向typeinf对象指针的值(_ZTI4Base)(对象的地址)
+     p *(void**)((long long)(*(void**)&base) -8)+8"typeinfo对象char*name的存放地址(_ZTI4Base+8
+     p  *(void**)(*(void**)((long long)(*(void**)&base) -8)+8) "typeinfo对象char*name成员的值
+     p (char*)(*(void**)(*(void**)((long long)(*(void**)&base) -8)+8)) "输出字符指针name的字符串
+    
+    > display:
+    对变量或表达式的查看，其原理是gdb存储一张自动display表，
+    每个display表项分为num编号+enb标志+expr表达式
+    display num "将num放于自动显示表，一旦暂停就会自动显示该num，这区别print
+    info display "查看自动display表
+    undisplay num "删除。等价delete display 编号
+    disable display num "禁用。enable display num 启用
+  > examine: x
+    打印指定地址所存放的值
+    x/5i $pc "当前运行地址处开始的5条汇编指令(/5i)
+    x/5uw 0x0001 "指定内存地址开始以十进制无符号(u)的5个4字节单元(w)的存放值-/b/h/w/g-1/2/4/8字节
+    x/c  optarg "打印optarg指针一个字节以char显示
+    x/s  optarg "打印optarg指针指向的字符串
+    x  &char1 "打印地址&char1指向内存的存放的值。默认是四个字节长度的二进制形式的内容.
+    x/4tb &float1 "打印四个字节单元-但是从低字节开始-不便于观看./t/d/xu -二/十/十六进制/浮点
+    x/tw  &float1 "打印一个四字节单元，从高字节开始--符合float的存放形式，很好。
+  > 汇编查看：
+    disassemble/s  "默认查看当前函数反汇编和源码(/s),后可接funcname,+10 
+    nexti               "汇编步进
+    stepi               "汇编步入
+ > 变量或函数类型：
+   whatis daemon "一看daemon是个函数类型int(int,int)
+   ptype d "打印Derived类对象d的类型成员信息。也可打印变量、函数名、表达式
+   ptype bp "打印Base*对象bp的类型，无论是指向父类还是子类对象，打印的结果都是Base*类型
+
+    
+        
+
+#gdb tui 命令和快捷键：
+    > gdb tui:
+        gdb tui是gdb原生自带的简单界面式gdb，虽然简陋但是只要安装gdb就可
+        直接使用。
+        gdb tui 主要有界面分隔和单键操作两种功能
+    > gdb tui的界面分隔：
+        最多支持两个窗口显示当前停止位置的源码、汇编、寄存器信息中的两种。
+        而命令窗口始终保持显示。i
+        layout split "显示汇编和源码两个窗口
+        layout src "显示源码窗口
+        layout asm "显示汇编窗口
+        layout regs "显示寄存器窗口
+        "上述三个，一次执行，窗口数量是。0-1-2-1
+        ctrl X + O "在三个窗口切换，命令窗口一直可键入命令和使用快捷键
+        ctrl X A         "gdb和gdbtui 之间切换。
+        ctrl X 1|2       "只切割出一个src窗口|二个窗口src+asm
+        ctrl N|P         "tui 下cmd切换下|上一条历史命令
+        ctrl L           "gdb下窗口清理
+    > gdb tui 单键模式：
+        crtl  X +shift S "tui下进入tui单键模式
+        q                "退出单键模式
+        r                "run
+        c                "continur
+        f                "finish
+        n                "next
+        s                "step
+        o                "汇编step into 
+        i                "汇编step over
+        w                "where =bt 查看当前停止处的堆栈
+        v                "info local 展示当前函数栈的局部变量
+        u                "up
+        d                "down
+
+#gdb调试多进程:
+    > gdb调试多进程相关命令:
+        × info program:查看程序的状态：在哪个进程;下条指令的地址;暂停原因
+        × info inferiors:查看程序的所有进程信息。
+        × set follow-fork-mode parent|child:
+            parent:默认，fork之后，父进程将会attach至gdb(gdb调试父进程)
+            child:类比上。
+        × set follow-exec-mode new|same:
+        × set detach-on-fork on|off：
+            on :默认。仅attach由set follow-fork-mode parent|child 
+                设置的进程至gdb，另一个进程则detach(不受gdb控制的自由运行)
+                
+            off:父子进程都attach至gdb，但gdb某一时刻只能调试其中一个进程
+                另一个进程处于暂停状态(off+child调试，父进程会暂停在fork)
+                inferior num "切换至另进程。
+                detach inferiors num "detach掉指定编号进程，让其自由运行
+        ×
+        采用off+child方式调试多进程，遇到了如下问题：
+        ! 不能在fork之后的代码，设置断点，否则直接run到该断点报错。
+        ！步进进fork之前,应delete所有断点,否则报错.
+        ！当fork后，使用n步进，会忽略当前daemon_run函数剩余行，一个n步进
+          就跳出了该函数，暂停在main函数的下一语句.
+          (似乎子进程没有正确加载fork后daemon_run函数的剩余语句的调试信息)
+        ?? 出问题，我就kill -9 gdbPID ，这居然会kill到gdb的子进程-chatserver
+        ?? gdb居然能屏蔽外部终端kill -TERM 发送给gdp调试进程SIGTERM信号
+           而gdb内使用signal 15就可以终止该进程
+        ?? gdb的退出或者run能顺带清理父进程终止后形成的僵尸进程
+        eg:
+          ####./auto-debug.gdb脚本实现gdb命令自动化执行和日志仅输出到文件
+          "采用off+child方式调试fork多进程(chatserver)正确步骤：
+            set inferor-tty /dev/pts/4 "run前设置本程序的输出终端
+            set detach-on-fork off     "run前设置,我父子进程都想调试所以off
+            set follow-fork-mode child  "n步进fork后，停在子进程
+            b DaemonRun.cpp:19      "停在fork
+            r                       "运行
+            d "此时暂停在pid=fork();n步进fork前delete所有断点，否则报错
+            n "步进fork，子进程停在if(pid<0)。而父进程停在fork中
+            --------gdb bug 规避
+            " 若此处继续n步进莫名跳到main中;所以跳过该步;
+            bt “bt显示地址而不是源码行号
+            disassemble/s daemon_run "bt查看函数的汇编指令地址及源码
+            bt "我操，居然bt又能正常打印指令对应的文件名:行号
+            n  "我操，居然能正常步进了，停在else if(pid>0).
+            ---------
+            infer 1 "切换到父进程
+            bt      "父进程果然停在fork中
+            finish  "执行fork完跳出暂停
+            n       "父进程可以正常步进
+          " 采用on+child调用chatsever的子进程
+            set detach-on-fork on
+            set followd-fork-on child
+            b main.cpp:79  "
+            r              "detach的父进程已运行终止退出;子进程停在79行
+            record         "记录一下，以便调试出问题可以reverse倒退
+            s              "步入调试CConfigFileReader对象构造函数
+        
+#gdb调试多线程:
+    > gdb调试多线程命令： 
+        × info threads：查看当前进程的所有线程信息
+        × thread num：切换至线程num
+        × thread apply all|thread-id-list command：
+        × set non-stop on|off:必须程序运行(run)之前进行设置
+            on :
+                non-stop模式。
+                1.gdb当前线程一定不会自动切换，其他线程会自由运行且也不会
+                  反过来影响当前线程(other threads run independently)
+                2.除当前线程的同一进程内的其他线程的运行状态(暂停|恢复运行
+                  )只取决于自身和thread apply all|thread-id-list command)
+                  如该模式下实现同一进程内所有线程步进同时地独立地
+            off:
+                默认。即all-stop模式--同停止同运行
+                1.同一进程中任意线程暂停(如遇到断点、信号、异常、next|step
+                  |until|finish|return等命令)都会使得该进程内的其他线程暂停
+                2.该模式下，gdb会自动切换到主暂停线程(引起其他线程暂停的线程
+                  ），那么该线程就是gdb的当前线程。
+                3.暂停线程的恢复运行，也会使得同一进程内的其他进程恢复运行
+                缺点:all-stop模式下，
+                1.不可保证步伐一致性：
+                  某一个线程下执行步进(step|next)，并不能保证同一进程内的
+                  其他线程也步进(cannt lockstep simultaneously)。
+                2.不可保证线程之间的运行独立性:
+                  同一进程内任意线程的暂停(恢复运行)将使得其他线程同时暂停
+                  (恢复运行)。(cannt run independently)
+                3.gdb自动切换到暂停进程，即gdb的当前线程是自动切换的。
+                优点:
+                1.观察程序状态时(很显然只能线程暂停时输入观察相关的命令)
+                  进程内的所有线程是暂停的。
+                2.能在暂停线程之间自由切换
+
+        × set scheduler-locking off|on|step:
+            这是对all-stop模式的优化(当然，该选项应在set non-stop off下使用)
+            off：默认，no locking ,any thread may runs at any time.
+            on: only the current thread can run when the inferior resumes.
+            step：the step mode is a optimization for single stepping
+                  keep other threads from preempting the current thread 
+                  when you are stepping('next','step').
+                  but other threads will run freely when u use command, like
+                  'continue','until','finish','return'.
+
+#核心转存储(段错误):
+    
+    
+                  
+                  
+                  

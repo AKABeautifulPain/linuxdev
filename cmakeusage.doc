@@ -1,0 +1,189 @@
+参考cmake实践下的CMakeLists.txt、readme.md
+#项目目录结构：
+    |————CMakeLists.txt
+    /*格式1：一种简约风格
+    |————src/       "main.cpp、test.cpp 、test.h
+    |————include/   "第三方库的头文件.h
+    |————lib/       ".h对应的第三方库:.a、.so
+    */
+    /*格式2：一种不用第三库，而用自己定义的底层基础源文件(可以选择编译为库)
+    |--chatseversrc/    "该项目的第一个可执行文件对应的源码:.h , .cpp.
+    |--fileseversrc/    "第二个可执行文件。子CMakeLists.txt
+    |--net/             "自定义底层基础1，网络基础。.cpp 、.h
+    |---utils/          "基础2,通用工具 。.cpp、 .h
+     */
+    |————etc/            "配置文件
+    |————build/          "项目构建结果临时存放位置。cd ./build;cmake ../CMakeLists.txt生成在这
+    |————script/
+    |————bin/            "可执行文件生成位置
+    |————doc/            "帮助文档
+    |————readme.md       "项目目录结构;项目编译安装介绍；可执行文件使用介绍。cmake:
+> cmake构建：
+    即建议在项目的build文件夹下cmake ../.
+    这样构建生成的Makefie、config.h会生成在build目录下。
+    即cd ./build;cmake ../;make;make install
+    × 存放位置：
+            1.默认存放在调用cmake的目录，无论是父项目还子项目
+            2.子项目可通过ADD_SUBDIRECTORY()的参数bin_dir指定
+              子项目的构建结果目录。
+
+
+#CMakeList.txt:
+    >参考:
+        cmake实践/
+        flamingoserver/CMakeLists.txt
+        program/cmake实践/
+    >cmake系统变量：自定义宏
+        × CMAKE_CXX_FLAGS:见flamingoserver/CMakeLists.txt
+            1.G++编译器编译选项设置，主要是设置编译选项而链接的后面会设置。
+            2.放在父项目的构建文件中设置&&紧接project()之后set()设置该变量。
+        × CMAKE_CURRENT_SOURCE_DIR 是内置宏， 表示当前 CMakeLists.txt 所在目录 
+        × PROJECT_BINARY_DIR: 
+            1.存放二进制结果的目录，包括目标文件.o/可执行文件/库文件.so .a
+              默认指的是调用cmake的目录
+        × PROJECT_SOURCE_DIR:
+            1.存放源文件的目录，包括.cpp
+              默认是调用该变量的实际CMakeLists.txt文件所在目录。区别于上
+        × EXECUTABLE_OUTPUT_PATH:
+            1.make后存放可执行文件的目录
+            2.默认是构建结果存放目录
+            3.通过set()设置可执行文件输出目录必须在add_executable()调用之后
+        × LIBRARY_OUTPUT_PATH:
+            1.make后存放共享库的目录
+            1.同上
+    >cmake函数：
+        × project():
+            1.定义项目名称
+            2.独立的子项目必须调用该函数指定项目名，表明该子项目是独立构建
+              不参与父项目，类似solution--project关系。
+        × add_subdirectory():
+            1.构建子项目(即子CMakeLists.txt)
+            2.一般放在父项目(项目根目录)的CMakeLists.txt中
+            3..函数参数如下：
+                src_dir:
+                    子项目的CMakeLists.txt路径。
+                    当值为相对路径时，是相对父项目CMakeLists.txt(即该函数所
+                    在的构建文件)的PROJECT_SRC_DIR
+                        
+                [bin_dir]:
+                    即子项目的构建结果存放路径。也是子项目的默认make结果存放
+                    位置。
+                    当为相对路径时，是相对PROJECT_OBJ_DIR,即调用cmake的目录
+                    当不指定时，那就之间存放在PROJECT_OBJ_DIR目录下
+                        
+                [EXCLUDE_FROM_ALL]：
+                    该参数用于将子项目的构建独立于父项目。
+                    make 父项目makefile并不调用该子项目的makefile。
+                    需另行make。
+                eg:见./cmake实践/add_subdirectory,构建之前目录结构如下，是  
+                   项目的常用目录结构。
+                   |
+                   |_____src(子项目目录1)
+                   |    |___CMakeLists.txt(子项目的构建文件:子项目的局部设置)
+                   |    |___main.cpp(子项目源文件)
+                   |
+                   |_____build(cmake调用位置;构建结果存放位置)
+                   |    |___temp(自指定：子项目的构建结果;子项目的编译中间文
+                   |              件;子项目的编译后可执行文件的默认位置)
+                   |
+                   |_____doc(文档)
+                   |
+                   |—————bin(自指定：项目可执行文件;项目运行脚本)
+                   |
+                   |—————CMakeLists.txt(父项目(根目录)构建文件:项目整体设置)
+                   |
+                构建方法&&编译方法：
+                    s1：cd ./build #切换到build目录
+                    
+                    s2: cmake ../  #cmake父项目的CMakeList.txt即可
+                                   #在build目录下生成Makefile文件(父项目)
+                                   #自动调用add_subdirectory()设置的子项目项目CMakeFILE.txt,
+                            
+
+                    
+                    s3: make ./    
+                构建&&编译的内部流程：
+                    s1：cd ./build ;cmake ../CMakeLists.txt  但运行
+                        到ADD_SUBDIRECTORY()
+                        会根据其参数src_dir去cmake子项目的CMakeLists.txt
+                    s2: 子项目的构建结果(如Makefile)，会根据参数bin_dir放入
+                        ./build/temp目录。而父项目的构建结果(如Makefile)存
+                        放在./build目录。见上，构建结果存放位置。
+                    s3：make ./Makefile(父项目)，之后自动会关联
+                        make ./temp/Makefile(子项目)，编译的可执行文件结果
+                        存放在由子项目的构建文件中EXECUTABLE_OUTPUT_PATH变量
+                        指定的./build/../bin目录下。
+        × include_directories():
+            1.添加头文件搜索路径(空格或换行隔开多个路径)
+            2.在add_executable()之前调用。
+            3.相当于-I;相当于添加头文件路径至CPULS_INCLUDE_PATH变量
+               
+        × link_directories():
+            1.添加需要连接的库目录集合(空格或换行隔开)
+            2.必须在add_executale()之前调用
+            3.相当于-L;相当于添加动态库查找目录至
+              LD_LIBRARY_PATH环境变量。
+            4.本质是确定了待连接库的搜索路径并未进行库连接
+              因此，若使用该函数，则后续的add_executable()
+              生成可执行文件之后还需调用target_link_libraries()
+              连接这些库
+        × link_libraries():<已弃用，请使用target_link_libraries()替代>
+            1.添加需要链接的库路径名集合
+            2.基本同上，但参数是完整路径名(完整filename=path+name)
+            
+        × find_library():
+            1.在指定的路径搜索库名结果返回第一个参数保存。
+            2.默认不设置NO_DEFAULT_PATH,则继续查找CMAKE_LIBRARY_PATH-->
+              系统默认lib搜索目录(/usr/lib,/usr/local/lib)
+            3.若查找到了，则后面的find_library()调用就跳过，除非重置首个参数
+            4.结合if()--endif(),查看项目是否有某个库文件。
+
+        × aux_source_directory():
+            1.递归指定目录下的所有源文件，赋值给自定义变量。
+            2.可将该自定义变量作为下面一个函数的第二个参数.
+            3.add_executable()之前调用;
+            eg:
+               aux_source_dierectory(./src src_list)"相对于PROJECT_SOURCE_DIR
+
+        × add_executable():
+            1.根据所需的源文件列表编译&&链接成可执行文件。
+            2.可执行文件名必须和project()定义的项目名称一样.
+            3.若该可执行文件需要链接库文件，
+              则在此之前需要添加库文件目录或路径，见上。
+                在此之后需要链接库，见下。
+            eg:
+                add_executable(myproject src_list)
+
+        × target_link_libraries():
+            1.设置可执行文件/库文件需要链接的库名
+            2.库名可设置为mytest/libmytest.so/libmytest.a
+              -->优先动态库/指定动态库/指定静态库
+            4.必须在add_executable()之后调用。
+            3.相当于-l;但可以同时指定多个库名。
+        × install():
+            1.设置TARGETS|FILES|PROGRMS(二进制文件|普通文件|脚本)等
+              的安装规则
+            2若安装目录为相对路径则是相对于CMAKE_INSTALL_PREFIX;
+             可cmake -D CMAKE_INSTALL_PREFIX或set(CMAKE_INSTALL_PREFIX 
+             目录)设置。
+            3.(单个构建文件)在add_executable()之后调用;
+              (多个构建文件时)在根目录的CMakeLists.txt中调用;
+              cmake生成Makefile后使用make install。
+             进行实际安装。
+            eg:
+            install(TARGETS mytest libtest1.so libtest.a
+                    RUNTIME DESTINATION ${PROJECT_BIN_DIR}/../bin
+                    LIBRARY DESTINATION lib
+                    ARCHIVE DESTINATION lib
+                    )
+            install(FILES readme.txt test.h
+                    DESTINATION doc
+                    DESTINATION include    
+                    )
+            install(PROGRAMS run.sh
+                    DESTINATION bin
+                    
+
+
+
+
